@@ -25,7 +25,7 @@ Cuando te asignen una tarea (una "característica" o "feature"), debes crear una
 
 ### 1. Clonar el repositorio (Solo la primera vez)
 ```bash
-git clone https://github.com/tu-usuario/aura-food.git
+git clone https://github.com/tabordaa/aura-food.git
 cd aura-food
 ```
 
