@@ -3,6 +3,11 @@ venv/
 env/
 .env
 
+# Archivos compilados de Python
+__pycache__/
+*.py[cod]
+*$py.class
+
 # Configuración de IDEs
 .vscode/
 .idea/
