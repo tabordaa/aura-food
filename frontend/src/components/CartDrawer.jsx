@@ -12,8 +12,9 @@ export default function CartDrawer({
   cartSubtotal, 
   deliveryCost, 
   cartTotal, 
-  changeQty, 
-  removeFromCart 
+  changeQty,
+  removeFromCart,
+  onCheckout
 }) {
   if (!cartOpen) return null;
 
@@ -79,7 +80,7 @@ export default function CartDrawer({
             <button 
               className={styles['btn-primary']} 
               style={{ marginTop: '16px', marginBottom: 0 }}
-              onClick={() => alert('¡Módulo de checkout próximamente!')}
+              onClick={onCheckout}
             >
               Realizar pedido →
             </button>
