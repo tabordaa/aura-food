@@ -1,9 +1,12 @@
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { IconTruck, IconBolt, IconCheck } from '../../components/Icons';
 import Navbar from '../../components/Navbar';
 import ProductCard from '../../components/ProductCard';
 import CartDrawer from '../../components/CartDrawer';
+import CheckoutModal from '../../components/CheckoutModal';
+import ActiveOrderBanner from '../../components/ActiveOrderBanner';
+import { getSavedOrders } from '../../utils/orders';
 import styles from './Catalog.module.css';
 
 const CATEGORIES = [
@@ -35,11 +38,15 @@ export default function CatalogPage() {
   const [cart, setCart] = useState([]);
   const [favorites, setFavorites] = useState([]);
   const [cartOpen, setCartOpen] = useState(false);
+  const [checkoutOpen, setCheckoutOpen] = useState(false);
+  const [latestOrderId, setLatestOrderId] = useState(() => getSavedOrders()[0]?.id ?? null);
 
   const cartCount = cart.reduce((acc, item) => acc + item.qty, 0);
   const cartSubtotal = cart.reduce((acc, item) => acc + item.price * item.qty, 0);
   const deliveryCost = cartSubtotal > 0 ? 5000 : 0;
   const cartTotal = cartSubtotal + deliveryCost;
+
+  const closeCheckout = useCallback(() => setCheckoutOpen(false), []);
 
   const toggleFav = (id) => setFavorites(f => f.includes(id) ? f.filter(x => x !== id) : [...f, id]);
 
@@ -101,6 +108,8 @@ export default function CatalogPage() {
 
           {/* Main */}
           <main className={styles['catalog-main']}>
+            {latestOrderId && <ActiveOrderBanner orderId={latestOrderId} />}
+
             {/* Welcome Banner */}
             <div className={styles['welcome-banner']}>
               <div className={styles['banner-left']}>
@@ -168,8 +177,21 @@ export default function CatalogPage() {
         cartSubtotal={cartSubtotal} 
         deliveryCost={deliveryCost} 
         cartTotal={cartTotal} 
-        changeQty={changeQty} 
-        removeFromCart={removeFromCart} 
+        changeQty={changeQty}
+        removeFromCart={removeFromCart}
+        onCheckout={() => { setCartOpen(false); setCheckoutOpen(true); }}
+      />
+
+      <CheckoutModal
+        open={checkoutOpen}
+        onClose={closeCheckout}
+        cart={cart}
+        cartCount={cartCount}
+        cartSubtotal={cartSubtotal}
+        deliveryCost={deliveryCost}
+        cartTotal={cartTotal}
+        clearCart={() => setCart([])}
+        onOrderPlaced={(receipt) => setLatestOrderId(receipt.id)}
       />
     </>
   );

@@ -1,4 +1,4 @@
-import { IconCart, IconSearch } from './Icons';
+import { IconCart, IconSearch, IconTruck } from './Icons';
 import styles from '../pages/catalog/Catalog.module.css';
 
 export default function Navbar({ search, setSearch, cartCount, setCartOpen, navigate }) {
@@ -17,6 +17,9 @@ export default function Navbar({ search, setSearch, cartCount, setCartOpen, navi
         />
       </div>
       <div className={styles['navbar-actions']}>
+        <button className={styles['orders-btn']} onClick={() => navigate('/pedidos')}>
+          <IconTruck size={17} /> Mis pedidos
+        </button>
         <button className={styles['cart-btn']} aria-label="Carrito" onClick={() => setCartOpen(true)}>
           <IconCart size={22} />
           {cartCount > 0 && <span className={styles['cart-badge']}>{cartCount}</span>}
