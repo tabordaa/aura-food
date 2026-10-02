@@ -22,11 +22,38 @@ export function formatOrderId(id) {
   return '#' + String(id).padStart(5, '0');
 }
 
+// El backend guarda la fecha en UTC sin zona horaria
+export function parseServerDate(value) {
+  return new Date(/(Z|[+-]\d\d:\d\d)$/.test(value) ? value : value + 'Z');
+}
+
 export async function fetchOrder(id) {
   const res = await fetch(`${API_URL}/api/orders/${id}`);
   if (res.status === 404) return null;
   if (!res.ok) throw new Error('No pudimos consultar el pedido');
   return res.json();
+}
+
+export async function fetchOrders() {
+  const res = await fetch(`${API_URL}/api/orders`);
+  if (!res.ok) throw new Error('No pudimos cargar los pedidos');
+  return res.json();
+}
+
+// Devuelve el pedido actualizado; si el backend lo rechaza lanza un error con su status HTTP
+export async function updateOrderStatus(id, status) {
+  const res = await fetch(`${API_URL}/api/orders/${id}/status`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ status }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    const error = new Error(typeof data.detail === 'string' ? data.detail : 'No pudimos actualizar el pedido');
+    error.status = res.status;
+    throw error;
+  }
+  return data;
 }
 
 /*

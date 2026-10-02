@@ -1,7 +1,7 @@
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from pydantic import BaseModel
 from sqlalchemy.orm import Session
+
 from .. import models, schemas
 from ..database import get_db
 
@@ -15,29 +15,22 @@ STATUS_FLOW = [
     models.OrderStatus.entregado,
 ]
 
-# Esquema local para el PATCH (no existe en schemas.py y así no modificamos ese archivo)
-class OrderStatusUpdate(BaseModel):
-    status: models.OrderStatus
-
-
-from .. import models, schemas, oauth2
-
 @router.post("", response_model=schemas.OrderResponse, status_code=status.HTTP_201_CREATED)
 def create_order(
     order_in: schemas.OrderCreate,
+    user_id: int = Query(..., description="ID del cliente que hace el pedido (temporal hasta tener login)"),
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(oauth2.get_current_user)
 ):
-    user_id = current_user.id
     if not order_in.items:
         raise HTTPException(status_code=400, detail="El pedido debe tener al menos un producto")
+
+    user = db.query(models.User).filter(models.User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail=f"No existe el usuario con id {user_id}")
 
     order = models.Order(
         user_id=user_id,
         delivery_address=order_in.delivery_address,
-        phone=order_in.phone,
-        notes=order_in.notes,
-        payment_method=order_in.payment_method,
         status=models.OrderStatus.pendiente,
         total_price=0,
     )
@@ -89,14 +82,22 @@ def get_order(order_id: int, db: Session = Depends(get_db)):
 
 
 @router.patch("/{order_id}/status", response_model=schemas.OrderResponse)
-def update_order_status(order_id: int, status_in: OrderStatusUpdate, db: Session = Depends(get_db)):
+def update_order_status(
+    order_id: int,
+    status_in: schemas.OrderStatusUpdate,
+    db: Session = Depends(get_db),
+):
     order = db.query(models.Order).filter(models.Order.id == order_id).first()
     if not order:
         raise HTTPException(status_code=404, detail=f"No existe el pedido con id {order_id}")
 
     current = STATUS_FLOW.index(order.status)
     new = STATUS_FLOW.index(status_in.status)
-    if new != current + 1:
+    is_delivery_completion = (
+        status_in.status == models.OrderStatus.entregado
+        and order.status in (models.OrderStatus.preparado, models.OrderStatus.asignado)
+    )
+    if new != current + 1 and not is_delivery_completion:
         raise HTTPException(
             status_code=400,
             detail=f"No se puede pasar de '{order.status.value}' a '{status_in.status.value}'",

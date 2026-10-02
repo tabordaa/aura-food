@@ -7,7 +7,7 @@ import CatalogPage  from './pages/catalog/CatalogPage';
 import MyOrdersPage from './pages/orders/MyOrdersPage';
 import OrderTrackingPage from './pages/orders/OrderTrackingPage';
 import AdminDashboard from './pages/admin/AdminDashboard';
-import DeliveryDashboard from './pages/delivery/DeliveryDashboard';
+import DeliveryPage from './pages/delivery/DeliveryPage';
 
 export default function App() {
   return (
@@ -23,7 +23,7 @@ export default function App() {
           <Route path="/pedidos/:id" element={<ProtectedRoute allowedRoles={['cliente']}><OrderTrackingPage /></ProtectedRoute>} />
 
           <Route path="/admin" element={<ProtectedRoute allowedRoles={['admin']}><AdminDashboard /></ProtectedRoute>} />
-          <Route path="/delivery" element={<ProtectedRoute allowedRoles={['domiciliario']}><DeliveryDashboard /></ProtectedRoute>} />
+          <Route path="/delivery" element={<ProtectedRoute allowedRoles={['domiciliario']}><DeliveryPage /></ProtectedRoute>} />
         </Routes>
       </AuthProvider>
     </BrowserRouter>
