@@ -55,6 +55,9 @@ class OrderItemResponse(OrderItemBase):
 
 class OrderBase(BaseModel):
     delivery_address: str
+    phone: Optional[str] = None
+    notes: Optional[str] = None
+    payment_method: Optional[str] = None
 
 class OrderCreate(OrderBase):
     items: List[OrderItemCreate]

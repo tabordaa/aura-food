@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { IconTruck, IconBolt, IconCheck } from '../../components/Icons';
 import Navbar from '../../components/Navbar';
@@ -6,7 +6,7 @@ import ProductCard from '../../components/ProductCard';
 import CartDrawer from '../../components/CartDrawer';
 import CheckoutModal from '../../components/CheckoutModal';
 import ActiveOrderBanner from '../../components/ActiveOrderBanner';
-import { getSavedOrders } from '../../utils/orders';
+import { getSavedOrders, API_URL } from '../../utils/orders';
 import styles from './Catalog.module.css';
 
 const CATEGORIES = [
@@ -40,6 +40,21 @@ export default function CatalogPage() {
   const [cartOpen, setCartOpen] = useState(false);
   const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [latestOrderId, setLatestOrderId] = useState(() => getSavedOrders()[0]?.id ?? null);
+  const [dbProducts, setDbProducts] = useState(PRODUCTS);
+
+  useEffect(() => {
+    fetch(`${API_URL}/api/products`)
+      .then(res => res.json())
+      .then(data => {
+        // Combinar datos reales de la BD con los metadatos visuales del front
+        const merged = PRODUCTS.map(p => {
+          const dbItem = data.find(d => d.id === p.id);
+          return dbItem ? { ...p, name: dbItem.name, price: dbItem.price, stock: dbItem.stock } : p;
+        });
+        setDbProducts(merged);
+      })
+      .catch(err => console.error('Error cargando catálogo:', err));
+  }, []);
 
   const cartCount = cart.reduce((acc, item) => acc + item.qty, 0);
   const cartSubtotal = cart.reduce((acc, item) => acc + item.price * item.qty, 0);
@@ -67,7 +82,7 @@ export default function CatalogPage() {
     );
   };
 
-  const filtered = PRODUCTS.filter(p => {
+  const filtered = dbProducts.filter(p => {
     const matchCategory = p.category === activeCategory;
     const matchSearch   = p.name.toLowerCase().includes(search.toLowerCase());
     const matchFilter   = activeFilter === 'Todos' ? true

@@ -117,6 +117,9 @@ export default function CheckoutModal({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           delivery_address: address,
+          phone: delivery.phone,
+          notes: delivery.notes.trim(),
+          payment_method: payment,
           items: cart.map(item => ({ product_id: item.id, quantity: item.qty })),
         }),
       });

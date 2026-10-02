@@ -20,7 +20,7 @@ def seed_data():
             )
             db.add(test_user)
             db.commit()
-            print("✅ Usuario de prueba creado (ID: 1)")
+            print("Usuario de prueba creado (ID: 1)")
 
         # Crear productos de prueba si no existen
         products = [
@@ -41,14 +41,14 @@ def seed_data():
                 db.add(product)
         
         db.commit()
-        print("✅ 8 Productos de prueba creados")
+        print("8 Productos de prueba creados")
 
     except Exception as e:
-        print(f"❌ Error al poblar base de datos: {e}")
+        print(f"Error al poblar base de datos: {e}")
     finally:
         db.close()
 
 if __name__ == "__main__":
-    print("⏳ Poblando la base de datos...")
+    print("Poblando la base de datos...")
     seed_data()
-    print("🎉 Proceso terminado.")
+    print("Proceso terminado.")

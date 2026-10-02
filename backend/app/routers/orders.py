@@ -36,6 +36,9 @@ def create_order(
     order = models.Order(
         user_id=user_id,
         delivery_address=order_in.delivery_address,
+        phone=order_in.phone,
+        notes=order_in.notes,
+        payment_method=order_in.payment_method,
         status=models.OrderStatus.pendiente,
         total_price=0,
     )

@@ -48,6 +48,9 @@ class Order(Base):
     total_price = Column(Float, nullable=False)
     status = Column(Enum(OrderStatus), default=OrderStatus.pendiente)
     delivery_address = Column(String, nullable=False)
+    phone = Column(String, nullable=True)
+    notes = Column(Text, nullable=True)
+    payment_method = Column(String, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     
     customer = relationship("User", back_populates="orders")
