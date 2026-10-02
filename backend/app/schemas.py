@@ -69,3 +69,11 @@ class OrderResponse(OrderBase):
 
     class Config:
         from_attributes = True
+
+# --- Tokens ---
+class Token(BaseModel):
+    access_token: str
+    token_type: str
+
+class TokenData(BaseModel):
+    id: Optional[str] = None

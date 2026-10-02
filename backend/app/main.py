@@ -22,5 +22,6 @@ def read_root():
     return {"message": "Bienvenido a la API de Aura Food. Visita /docs para ver la documentación."}
 
 # Aquí el Backend Jr registrará sus routers después:
-from .routers import orders
+from .routers import orders, auth
+app.include_router(auth.router, prefix="/api/auth")
 app.include_router(orders.router, prefix="/api/orders", tags=["Orders"])
