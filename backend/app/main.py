@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from . import models
 from .database import engine
+from .routers import orders
 
 # Crear las tablas en la base de datos
 models.Base.metadata.create_all(bind=engine)
@@ -17,10 +18,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.include_router(orders.router, prefix="/orders", tags=["Orders"])
+app.include_router(orders.router, prefix="/api/orders", tags=["Orders"])
+
 @app.get("/")
 def read_root():
     return {"message": "Bienvenido a la API de Aura Food. Visita /docs para ver la documentación."}
-
-# Aquí el Backend Jr registrará sus routers después:
-from .routers import orders
-app.include_router(orders.router, prefix="/api/orders", tags=["Orders"])

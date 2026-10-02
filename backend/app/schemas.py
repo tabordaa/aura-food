@@ -59,6 +59,9 @@ class OrderBase(BaseModel):
 class OrderCreate(OrderBase):
     items: List[OrderItemCreate]
 
+class OrderStatusUpdate(BaseModel):
+    status: OrderStatus
+
 class OrderResponse(OrderBase):
     id: int
     user_id: int

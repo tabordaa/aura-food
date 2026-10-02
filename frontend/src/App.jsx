@@ -4,6 +4,7 @@ import RegisterPage from './pages/auth/RegisterPage';
 import CatalogPage  from './pages/catalog/CatalogPage';
 import MyOrdersPage from './pages/orders/MyOrdersPage';
 import OrderTrackingPage from './pages/orders/OrderTrackingPage';
+import DeliveryPage from './pages/delivery/DeliveryPage';
 
 export default function App() {
   return (
@@ -15,6 +16,7 @@ export default function App() {
         <Route path="/catalog"  element={<CatalogPage />} />
         <Route path="/pedidos"  element={<MyOrdersPage />} />
         <Route path="/pedidos/:id" element={<OrderTrackingPage />} />
+        <Route path="/delivery" element={<DeliveryPage />} />
       </Routes>
     </BrowserRouter>
   );

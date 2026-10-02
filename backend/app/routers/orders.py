@@ -1,7 +1,7 @@
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from pydantic import BaseModel
 from sqlalchemy.orm import Session
+
 from .. import models, schemas
 from ..database import get_db
 
@@ -14,11 +14,6 @@ STATUS_FLOW = [
     models.OrderStatus.asignado,
     models.OrderStatus.entregado,
 ]
-
-# Esquema local para el PATCH (no existe en schemas.py y así no modificamos ese archivo)
-class OrderStatusUpdate(BaseModel):
-    status: models.OrderStatus
-
 
 @router.post("", response_model=schemas.OrderResponse, status_code=status.HTTP_201_CREATED)
 def create_order(
@@ -87,14 +82,22 @@ def get_order(order_id: int, db: Session = Depends(get_db)):
 
 
 @router.patch("/{order_id}/status", response_model=schemas.OrderResponse)
-def update_order_status(order_id: int, status_in: OrderStatusUpdate, db: Session = Depends(get_db)):
+def update_order_status(
+    order_id: int,
+    status_in: schemas.OrderStatusUpdate,
+    db: Session = Depends(get_db),
+):
     order = db.query(models.Order).filter(models.Order.id == order_id).first()
     if not order:
         raise HTTPException(status_code=404, detail=f"No existe el pedido con id {order_id}")
 
     current = STATUS_FLOW.index(order.status)
     new = STATUS_FLOW.index(status_in.status)
-    if new != current + 1:
+    is_delivery_completion = (
+        status_in.status == models.OrderStatus.entregado
+        and order.status in (models.OrderStatus.preparado, models.OrderStatus.asignado)
+    )
+    if new != current + 1 and not is_delivery_completion:
         raise HTTPException(
             status_code=400,
             detail=f"No se puede pasar de '{order.status.value}' a '{status_in.status.value}'",

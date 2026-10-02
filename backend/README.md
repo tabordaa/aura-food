@@ -44,3 +44,10 @@ La API estará disponible en: [http://localhost:8000](http://localhost:8000)
 
 Puedes ver y probar todos los endpoints desde la documentación interactiva (Swagger) en:
 👉 **[http://localhost:8000/docs](http://localhost:8000/docs)**
+
+### Endpoints de pedidos
+
+- `GET /orders`: devuelve los pedidos con sus ítems.
+- `PATCH /orders/{id}/status`: actualiza el estado del pedido. Envía, por ejemplo, `{"status": "entregado"}`.
+
+Los estados válidos son `pendiente`, `preparado`, `asignado` y `entregado`.
