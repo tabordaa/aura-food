@@ -3,15 +3,10 @@ import { Link, useParams } from 'react-router-dom';
 import { IconMapPin, IconPhone, IconCheck } from '../../components/Icons';
 import useOrderStatus from '../../hooks/useOrderStatus';
 import {
-  ORDER_STEPS, DELIVERY_MINUTES, stepIndex, formatPrice, formatOrderId, getSavedOrder,
+  ORDER_STEPS, DELIVERY_MINUTES, stepIndex, formatPrice, formatOrderId, getSavedOrder, parseServerDate,
 } from '../../utils/orders';
 import OrdersTopbar from './OrdersTopbar';
 import styles from './Orders.module.css';
-
-// El backend guarda la fecha en UTC sin zona horaria
-function parseServerDate(value) {
-  return new Date(/(Z|[+-]\d\d:\d\d)$/.test(value) ? value : value + 'Z');
-}
 
 const formatTime = (date) => date.toLocaleTimeString('es-CO', { hour: 'numeric', minute: '2-digit' });
 
