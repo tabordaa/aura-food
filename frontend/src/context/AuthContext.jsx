@@ -32,7 +32,15 @@ export function AuthProvider({ children }) {
     localStorage.setItem('token', data.access_token);
     const userData = await authService.getMe();
     setUser(userData);
-    navigate('/catalog');
+    
+    // Redirección basada en rol
+    if (userData.role === 'admin') {
+      navigate('/admin');
+    } else if (userData.role === 'domiciliario') {
+      navigate('/delivery');
+    } else {
+      navigate('/catalog');
+    }
   };
 
   const register = async (userData) => {

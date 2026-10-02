@@ -36,9 +36,13 @@ class Product(Base):
     name = Column(String, index=True, nullable=False)
     description = Column(Text, nullable=True)
     price = Column(Float, nullable=False)
+    old_price = Column(Float, nullable=True)
     category = Column(String, index=True)
     image_url = Column(String, nullable=True)
     stock = Column(Integer, default=0)
+    tag = Column(String, nullable=True)
+    origin = Column(String, nullable=True)
+    unit = Column(String, nullable=True)
 
 class Order(Base):
     __tablename__ = "orders"

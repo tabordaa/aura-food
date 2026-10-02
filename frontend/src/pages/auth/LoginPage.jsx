@@ -1,16 +1,23 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Navigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { IconCart, IconMail, IconLock, IconEye, IconEyeOff, IconArrowRight, IconShield, IconGoogle } from '../../components/Icons';
 import styles from './Auth.module.css';
 
 export default function LoginPage() {
   const navigate = useNavigate();
-  const { login } = useAuth();
+  const { login, user } = useAuth();
   const [showPass, setShowPass] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+
+  // Redirigir si ya está logueado
+  if (user) {
+    if (user.role === 'admin') return <Navigate to="/admin" replace />;
+    if (user.role === 'domiciliario') return <Navigate to="/delivery" replace />;
+    return <Navigate to="/catalog" replace />;
+  }
 
   const handleSubmit = async (e) => {
     e.preventDefault();

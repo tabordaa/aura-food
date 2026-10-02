@@ -44,7 +44,15 @@ export default function CartDrawer({
           ) : (
             cart.map(item => (
               <div key={item.id} className={styles['cart-item']}>
-                <div className={styles['cart-item-emoji']}>{item.emoji}</div>
+                <div className={styles['cart-item-image']}>
+                  {item.image_url ? (
+                    <img src={item.image_url} alt={item.name} style={{ width: '40px', height: '40px', objectFit: 'cover', borderRadius: '4px' }} />
+                  ) : (
+                    <div style={{ width: '40px', height: '40px', background: '#f0f0f0', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ccc' }}>
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 19V5a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v14M8 10l2-2 4 4 2-2"/></svg>
+                    </div>
+                  )}
+                </div>
                 <div className={styles['cart-item-info']}>
                   <p className={styles['cart-item-name']}>{item.name}</p>
                   <p className={styles['cart-item-unit']}>{item.unit}</p>

@@ -24,14 +24,14 @@ def seed_data():
 
         # Crear productos de prueba si no existen
         products = [
-            {"id": 1, "name": "Aguacate Hass", "price": 9200, "category": "Frutas", "stock": 50, "image_url": "https://images.unsplash.com/photo-1523049673857-eb18f1d7b578?auto=format&fit=crop&q=80&w=200"},
-            {"id": 2, "name": "Leche Entera", "price": 7800, "category": "Lácteos", "stock": 30, "image_url": "https://images.unsplash.com/photo-1550583724-b2692b85b150?auto=format&fit=crop&q=80&w=200"},
-            {"id": 3, "name": "Brócoli Fresco", "price": 7500, "category": "Verduras", "stock": 40, "image_url": "https://images.unsplash.com/photo-1584270354949-c26b0d5b4a0c?auto=format&fit=crop&q=80&w=200"},
-            {"id": 4, "name": "Fresas Hidropónicas", "price": 12500, "category": "Frutas", "stock": 25, "image_url": "https://images.unsplash.com/photo-1518635017498-87f514b751ba?auto=format&fit=crop&q=80&w=200"},
-            {"id": 5, "name": "Huevos Campesinos (x12)", "price": 15000, "category": "Proteínas", "stock": 20, "image_url": "https://images.unsplash.com/photo-1587486913049-53fc88980cfc?auto=format&fit=crop&q=80&w=200"},
-            {"id": 6, "name": "Espinaca Baby", "price": 4500, "category": "Verduras", "stock": 60, "image_url": "https://images.unsplash.com/photo-1576045057995-568f588f82fb?auto=format&fit=crop&q=80&w=200"},
-            {"id": 7, "name": "Pan Integral Artesanal", "price": 8500, "category": "Panadería", "stock": 15, "image_url": "https://images.unsplash.com/photo-1509440159596-0249088772ff?auto=format&fit=crop&q=80&w=200"},
-            {"id": 8, "name": "Tomate Chonto", "price": 3200, "category": "Verduras", "stock": 100, "image_url": "https://images.unsplash.com/photo-1592924357228-91a4daadcfea?auto=format&fit=crop&q=80&w=200"}
+            {"id": 1, "name": "Aguacate Hass Maduro", "price": 4500, "old_price": None, "tag": "Fresco", "origin": "🌿 Cosecha Nacional", "unit": "x 500g", "category": "frutas", "stock": 50, "image_url": ""},
+            {"id": 2, "name": "Manzanas Rojas Frescas", "price": 5200, "old_price": None, "tag": "Popular", "origin": "✈️ Importada Premium", "unit": "x 1 kg", "category": "frutas", "stock": 30, "image_url": ""},
+            {"id": 3, "name": "Leche Entera Orgánica", "price": 3800, "old_price": None, "tag": "Orgánico", "origin": "🔬 100% Pasteurizada", "unit": "x 1000ml", "category": "dairy", "stock": 40, "image_url": ""},
+            {"id": 4, "name": "Brócoli Fresco Criollo", "price": 2900, "old_price": 3600, "tag": "-20% Hoy", "origin": "🌱 Huerta Directa", "unit": "x 500g", "category": "frutas", "stock": 25, "image_url": ""},
+            {"id": 5, "name": "Pechuga de Pollo Campero", "price": 12400, "old_price": None, "tag": "Popular", "origin": "🌿 Libre de Antibióticos", "unit": "x 800g", "category": "meat", "stock": 20, "image_url": ""},
+            {"id": 6, "name": "Croissant de Mantequilla", "price": 6500, "old_price": None, "tag": "Horneado Hoy", "origin": "🏠 Masa Madre 24h", "unit": "x 4 uds", "category": "bakery", "stock": 60, "image_url": ""},
+            {"id": 7, "name": "Tomate Chonto Seleccionado", "price": 3400, "old_price": None, "tag": "Fresco", "origin": "⭐ Calidad Superior", "unit": "x 1 kg", "category": "frutas", "stock": 15, "image_url": ""},
+            {"id": 8, "name": "Detergente Ecológico", "price": 14900, "old_price": None, "tag": "Biodegradable", "origin": "🌿 Aroma Eucalipto", "unit": "x 1.5 L", "category": "cleaning", "stock": 100, "image_url": ""}
         ]
 
         for p_data in products:

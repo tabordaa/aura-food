@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Navigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { IconCart, IconMail, IconLock, IconEye, IconEyeOff, IconUser, IconPhone, IconArrowRight, IconShield, IconGoogle, IconMapPin } from '../../components/Icons';
 import styles from './Auth.module.css';
@@ -17,7 +17,7 @@ const strengthLabels = ['', 'Muy débil', 'Débil', 'Regular', 'Buena', 'Segura'
 
 export default function RegisterPage() {
   const navigate = useNavigate();
-  const { register } = useAuth();
+  const { register, user } = useAuth();
   const [showPass, setShowPass] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [accepted, setAccepted] = useState(false);
@@ -25,6 +25,13 @@ export default function RegisterPage() {
   const [error, setError] = useState('');
   const handleChange = f => e => setForm(prev => ({ ...prev, [f]: e.target.value }));
   const strength = getStrength(form.password);
+
+  // Redirigir si ya está logueado
+  if (user) {
+    if (user.role === 'admin') return <Navigate to="/admin" replace />;
+    if (user.role === 'domiciliario') return <Navigate to="/delivery" replace />;
+    return <Navigate to="/catalog" replace />;
+  }
 
   const handleSubmit = async (e) => {
     e.preventDefault();

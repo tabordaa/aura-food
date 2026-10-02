@@ -1,7 +1,10 @@
-import { IconCart, IconSearch, IconTruck } from './Icons';
+import { useAuth } from '../context/AuthContext';
+import { IconCart, IconSearch, IconTruck, IconUser } from './Icons';
 import styles from '../pages/catalog/Catalog.module.css';
 
 export default function Navbar({ search, setSearch, cartCount, setCartOpen, navigate }) {
+  const { user, logout } = useAuth();
+
   return (
     <nav className={styles['navbar']}>
       <div className={styles['brand']}>
@@ -24,9 +27,9 @@ export default function Navbar({ search, setSearch, cartCount, setCartOpen, navi
           <IconCart size={22} />
           {cartCount > 0 && <span className={styles['cart-badge']}>{cartCount}</span>}
         </button>
-        <button className={styles['user-btn']} onClick={() => navigate('/login')}>
-          <div className={styles['user-avatar']}>M</div>
-          María
+        <button className={styles['user-btn']} onClick={logout} title="Cerrar sesión">
+          <div className={styles['user-avatar']}><IconUser size={14} /></div>
+          {user?.name || 'Invitado'}
         </button>
       </div>
     </nav>
