@@ -29,12 +29,6 @@ export default function LoginPage() {
           <IconCart size={22} />
           {import.meta.env.VITE_APP_NAME || 'Aura Food'}
         </div>
-        <button
-          style={{ background: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.875rem', color: 'var(--text-secondary)', fontWeight: 500, border: 'none' }}
-          onClick={() => navigate('/catalog')}
-        >
-          ← Ir a la tienda
-        </button>
       </div>
 
       <div className={styles['auth-body']}>

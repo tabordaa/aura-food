@@ -1,5 +1,5 @@
 from app.database import SessionLocal, engine
-from app import models
+from app import models, utils
 
 # Asegurarse de que las tablas existan
 models.Base.metadata.create_all(bind=engine)
@@ -13,7 +13,7 @@ def seed_data():
             test_user = models.User(
                 name="Cliente de Prueba",
                 email="test@aurafood.com",
-                password_hash="fakehash",  # Temporal hasta tener auth real
+                password_hash=utils.hash_password("admin123"),  # Contraseña real encriptada
                 role=models.RoleEnum.cliente,
                 address="Av. Siempre Viva 123",
                 phone="3001234567"
