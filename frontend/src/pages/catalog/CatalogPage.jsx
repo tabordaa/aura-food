@@ -6,7 +6,9 @@ import ProductCard from '../../components/ProductCard';
 import CartDrawer from '../../components/CartDrawer';
 import CheckoutModal from '../../components/CheckoutModal';
 import ActiveOrderBanner from '../../components/ActiveOrderBanner';
-import { getSavedOrders, API_URL } from '../../utils/orders';
+import { getSavedOrders } from '../../utils/orders';
+import { useAuth } from '../../context/AuthContext';
+import { productService } from '../../services/product.service';
 import styles from './Catalog.module.css';
 
 const CATEGORIES = [
@@ -32,6 +34,7 @@ const FILTERS = ['Todos', 'Más vendidos', 'Ofertas del día', 'Orgánicos'];
 
 export default function CatalogPage() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [activeCategory, setActiveCategory] = useState('frutas');
   const [activeFilter, setActiveFilter] = useState('Todos');
   const [search, setSearch] = useState('');
@@ -43,13 +46,12 @@ export default function CatalogPage() {
   const [dbProducts, setDbProducts] = useState(PRODUCTS);
 
   useEffect(() => {
-    fetch(`${API_URL}/api/products`)
-      .then(res => res.json())
+    productService.getAllProducts()
       .then(data => {
         // Combinar datos reales de la BD con los metadatos visuales del front
         const merged = PRODUCTS.map(p => {
           const dbItem = data.find(d => d.id === p.id);
-          return dbItem ? { ...p, name: dbItem.name, price: dbItem.price, stock: dbItem.stock } : p;
+          return dbItem ? { ...p, name: dbItem.name, price: dbItem.price, stock: dbItem.stock, image_url: dbItem.image_url } : p;
         });
         setDbProducts(merged);
       })
@@ -129,7 +131,7 @@ export default function CatalogPage() {
             <div className={styles['welcome-banner']}>
               <div className={styles['banner-left']}>
                 <div className={styles['banner-badge']}><IconTruck size={13} /> Envío gratis en órdenes hoy</div>
-                <h1>¡Hola, María!<br />¿Qué necesitas hoy?</h1>
+                <h1>¡Hola, {user?.name || 'Invitado'}!<br />¿Qué necesitas hoy?</h1>
                 <p>Encuentra tus alimentos frescos directamente del campo a tu mesa en minutos. Cosecha del día garantizada.</p>
                 <div className={styles['banner-meta']}>
                   <span><IconCheck size={13} /> 100% Calidad local</span>

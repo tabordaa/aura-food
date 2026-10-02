@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../../context/AuthContext';
 import { IconCart, IconMail, IconLock, IconEye, IconEyeOff, IconUser, IconPhone, IconArrowRight, IconShield, IconGoogle, IconMapPin } from '../../components/Icons';
 import styles from './Auth.module.css';
 
@@ -16,18 +17,34 @@ const strengthLabels = ['', 'Muy débil', 'Débil', 'Regular', 'Buena', 'Segura'
 
 export default function RegisterPage() {
   const navigate = useNavigate();
+  const { register } = useAuth();
   const [showPass, setShowPass] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [accepted, setAccepted] = useState(false);
   const [form, setForm] = useState({ name: '', email: '', phone: '', address: '', password: '', confirm: '' });
+  const [error, setError] = useState('');
   const handleChange = f => e => setForm(prev => ({ ...prev, [f]: e.target.value }));
   const strength = getStrength(form.password);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    if (form.password !== form.confirm) { alert('Las contraseñas no coinciden'); return; }
-    if (!accepted) { alert('Debes aceptar los Términos y Condiciones'); return; }
-    navigate('/catalog');
+    if (form.password !== form.confirm) { setError('Las contraseñas no coinciden'); return; }
+    if (!accepted) { setError('Debes aceptar los Términos y Condiciones'); return; }
+    
+    try {
+      setError('');
+      // Enviar solo los campos que espera el backend
+      await register({
+        name: form.name,
+        email: form.email,
+        phone: form.phone,
+        address: form.address,
+        password: form.password,
+        role: "cliente"
+      });
+    } catch (err) {
+      setError(err.message);
+    }
   };
 
   return (
@@ -48,6 +65,7 @@ export default function RegisterPage() {
           </div>
 
           <form onSubmit={handleSubmit}>
+            {error && <div style={{ color: 'red', marginBottom: '1rem', fontSize: '0.875rem' }}>{error}</div>}
             <div className={styles['form-group']}>
               <label htmlFor="reg-name">Nombre completo</label>
               <div className={styles['input-wrapper']}>

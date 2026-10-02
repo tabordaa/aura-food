@@ -3,11 +3,10 @@ import { useNavigate } from 'react-router-dom';
 import { IconMapPin, IconLock, IconShield, IconCheck, IconArrowRight, IconPhone, IconTruck } from './Icons';
 import PaymentCardForm from './PaymentCardForm';
 import { BRAND_LABELS, detectBrand, onlyDigits, validateCard } from './cardUtils';
-import { API_URL, saveOrder } from '../utils/orders';
+import { saveOrder } from '../utils/orders';
+import { orderService } from '../services/order.service';
 import styles from './CheckoutModal.module.css';
 
-// Temporal hasta que exista el login: el backend pide el id del cliente en la URL
-const TEMP_USER_ID = 1;
 // Tiempo que dura la simulación de "aprobando pago con el banco"
 const CARD_PROCESSING_MS = 1800;
 
@@ -112,25 +111,18 @@ export default function CheckoutModal({
         await new Promise(resolve => setTimeout(resolve, CARD_PROCESSING_MS));
       }
       setStage('sending');
-      const res = await fetch(`${API_URL}/api/orders?user_id=${TEMP_USER_ID}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          delivery_address: address,
-          phone: delivery.phone,
-          notes: delivery.notes.trim(),
-          payment_method: payment,
-          items: cart.map(item => ({ product_id: item.id, quantity: item.qty })),
-        }),
+      
+      const resData = await orderService.createOrder({
+        delivery_address: address,
+        phone: delivery.phone,
+        notes: delivery.notes.trim(),
+        payment_method: payment,
+        items: cart.map(item => ({ product_id: item.id, quantity: item.qty })),
       });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        throw new Error(typeof data.detail === 'string' ? data.detail : 'No pudimos crear el pedido. Revisa los datos.');
-      }
 
       const brand = detectBrand(card.number);
       const newReceipt = {
-        id: data.id,
+        id: resData.id,
         createdAt: new Date().toISOString(),
         address,
         phone: formatPhone(delivery.phone),

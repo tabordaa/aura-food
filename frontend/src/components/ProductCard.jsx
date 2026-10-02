@@ -14,7 +14,11 @@ export default function ProductCard({ product, favorites, toggleFav, addToCart }
         <span className={[styles['card-tag'], product.oldPrice ? styles['tag-deal'] : ''].join(' ')}>
           {product.tag}
         </span>
-        <span className={styles['product-emoji']}>{product.emoji}</span>
+        {product.image_url ? (
+          <img src={product.image_url} alt={product.name} className={styles['product-img']} style={{ width: '100%', height: '100px', objectFit: 'cover', borderRadius: '8px' }} />
+        ) : (
+          <span className={styles['product-emoji']}>{product.emoji}</span>
+        )}
         <button 
           className={[styles['card-fav'], isFav ? styles.active : ''].join(' ')} 
           onClick={() => toggleFav(product.id)} 

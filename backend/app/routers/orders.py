@@ -20,18 +20,17 @@ class OrderStatusUpdate(BaseModel):
     status: models.OrderStatus
 
 
+from .. import models, schemas, oauth2
+
 @router.post("", response_model=schemas.OrderResponse, status_code=status.HTTP_201_CREATED)
 def create_order(
     order_in: schemas.OrderCreate,
-    user_id: int = Query(..., description="ID del cliente que hace el pedido (temporal hasta tener login)"),
     db: Session = Depends(get_db),
+    current_user: models.User = Depends(oauth2.get_current_user)
 ):
+    user_id = current_user.id
     if not order_in.items:
         raise HTTPException(status_code=400, detail="El pedido debe tener al menos un producto")
-
-    user = db.query(models.User).filter(models.User.id == user_id).first()
-    if not user:
-        raise HTTPException(status_code=404, detail=f"No existe el usuario con id {user_id}")
 
     order = models.Order(
         user_id=user_id,
