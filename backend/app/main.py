@@ -1,3 +1,6 @@
+import os
+
+from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -8,15 +11,31 @@ from .routers import auth, orders, products
 # Crear las tablas en la base de datos
 models.Base.metadata.create_all(bind=engine)
 
-app = FastAPI(title="Aura Food API", description="API para el sistema de supermercado y domicilios")
+load_dotenv()
+
+IS_PRODUCTION = os.getenv("ENV") == "production"
+CORS_ORIGINS = [
+    origin.strip()
+    for origin in os.getenv("CORS_ORIGINS", "http://localhost:5173,http://localhost:3000").split(",")
+    if origin.strip()
+]
+
+# En producción no se publica la documentación interactiva (/docs, /redoc, /openapi.json)
+app = FastAPI(
+    title="Aura Food API",
+    description="API para el sistema de supermercado y domicilios",
+    docs_url=None if IS_PRODUCTION else "/docs",
+    redoc_url=None if IS_PRODUCTION else "/redoc",
+    openapi_url=None if IS_PRODUCTION else "/openapi.json",
+)
 
 # Configurar CORS para permitir que el frontend de React (Vite) consuma la API
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://localhost:3000"], # Puertos comunes de dev
+    allow_origins=CORS_ORIGINS,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE"],
+    allow_headers=["Authorization", "Content-Type"],
 )
 
 @app.get("/")
