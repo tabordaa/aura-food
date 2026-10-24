@@ -1,9 +1,14 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useCallback, useState, useEffect } from 'react';
+import { useNavigate } from 'react-router';
 import { IconTruck, IconBolt, IconCheck } from '../../components/Icons';
 import Navbar from '../../components/Navbar';
 import ProductCard from '../../components/ProductCard';
 import CartDrawer from '../../components/CartDrawer';
+import CheckoutModal from '../../components/CheckoutModal';
+import ActiveOrderBanner from '../../components/ActiveOrderBanner';
+import { getSavedOrders } from '../../utils/orders';
+import { useAuth } from '../../hooks/useAuth';
+import { productService } from '../../services/product.service';
 import styles from './Catalog.module.css';
 
 const CATEGORIES = [
@@ -14,32 +19,37 @@ const CATEGORIES = [
   { id: 'bakery',   label: 'Panadería',          icon: '🥐' },
 ];
 
-const PRODUCTS = [
-  { id: 1, emoji: '🥑', name: 'Aguacate Hass Maduro',       unit: 'x 500g',   price: 4500,  oldPrice: null,  tag: 'Fresco',        origin: '🌿 Cosecha Nacional',      category: 'frutas'   },
-  { id: 2, emoji: '🍎', name: 'Manzanas Rojas Frescas',     unit: 'x 1 kg',   price: 5200,  oldPrice: null,  tag: 'Popular',       origin: '✈️ Importada Premium',     category: 'frutas'   },
-  { id: 3, emoji: '🥛', name: 'Leche Entera Orgánica',      unit: 'x 1000ml', price: 3800,  oldPrice: null,  tag: 'Orgánico',      origin: '🔬 100% Pasteurizada',     category: 'dairy'    },
-  { id: 4, emoji: '🥦', name: 'Brócoli Fresco Criollo',     unit: 'x 500g',   price: 2900,  oldPrice: 3600,  tag: '-20% Hoy',      origin: '🌱 Huerta Directa',        category: 'frutas'   },
-  { id: 5, emoji: '🍗', name: 'Pechuga de Pollo Campero',   unit: 'x 800g',   price: 12400, oldPrice: null,  tag: 'Popular',       origin: '🌿 Libre de Antibióticos', category: 'meat'     },
-  { id: 6, emoji: '🥐', name: 'Croissant de Mantequilla',   unit: 'x 4 uds',  price: 6500,  oldPrice: null,  tag: 'Horneado Hoy',  origin: '🏠 Masa Madre 24h',        category: 'bakery'   },
-  { id: 7, emoji: '🍅', name: 'Tomate Chonto Seleccionado', unit: 'x 1 kg',   price: 3400,  oldPrice: null,  tag: 'Fresco',        origin: '⭐ Calidad Superior',       category: 'frutas'   },
-  { id: 8, emoji: '🧴', name: 'Detergente Ecológico',       unit: 'x 1.5 L',  price: 14900, oldPrice: null,  tag: 'Biodegradable', origin: '🌿 Aroma Eucalipto',       category: 'cleaning' },
-];
+
 
 const FILTERS = ['Todos', 'Más vendidos', 'Ofertas del día', 'Orgánicos'];
 
 export default function CatalogPage() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [activeCategory, setActiveCategory] = useState('frutas');
   const [activeFilter, setActiveFilter] = useState('Todos');
   const [search, setSearch] = useState('');
   const [cart, setCart] = useState([]);
   const [favorites, setFavorites] = useState([]);
   const [cartOpen, setCartOpen] = useState(false);
+  const [checkoutOpen, setCheckoutOpen] = useState(false);
+  const [latestOrderId, setLatestOrderId] = useState(() => getSavedOrders()[0]?.id ?? null);
+  const [dbProducts, setDbProducts] = useState([]);
+
+  useEffect(() => {
+    productService.getAllProducts()
+      .then(data => {
+        setDbProducts(data);
+      })
+      .catch(err => console.error('Error cargando catálogo:', err));
+  }, []);
 
   const cartCount = cart.reduce((acc, item) => acc + item.qty, 0);
   const cartSubtotal = cart.reduce((acc, item) => acc + item.price * item.qty, 0);
   const deliveryCost = cartSubtotal > 0 ? 5000 : 0;
   const cartTotal = cartSubtotal + deliveryCost;
+
+  const closeCheckout = useCallback(() => setCheckoutOpen(false), []);
 
   const toggleFav = (id) => setFavorites(f => f.includes(id) ? f.filter(x => x !== id) : [...f, id]);
 
@@ -60,11 +70,11 @@ export default function CatalogPage() {
     );
   };
 
-  const filtered = PRODUCTS.filter(p => {
+  const filtered = dbProducts.filter(p => {
     const matchCategory = p.category === activeCategory;
     const matchSearch   = p.name.toLowerCase().includes(search.toLowerCase());
     const matchFilter   = activeFilter === 'Todos' ? true
-      : activeFilter === 'Ofertas del día' ? p.oldPrice !== null
+      : activeFilter === 'Ofertas del día' ? p.old_price !== null
       : activeFilter === 'Orgánicos' ? p.tag === 'Orgánico'
       : true;
     return matchCategory && matchSearch && matchFilter;
@@ -101,11 +111,13 @@ export default function CatalogPage() {
 
           {/* Main */}
           <main className={styles['catalog-main']}>
+            {latestOrderId && <ActiveOrderBanner orderId={latestOrderId} />}
+
             {/* Welcome Banner */}
             <div className={styles['welcome-banner']}>
               <div className={styles['banner-left']}>
-                <div className={styles['banner-badge']}><IconTruck size={13} /> Envío gratis en órdenes hoy</div>
-                <h1>¡Hola, María!<br />¿Qué necesitas hoy?</h1>
+                <div className={styles['banner-badge']}><IconTruck size={13} /> Domicilio a tu puerta</div>
+                <h1>¡Hola, {user?.name || 'Invitado'}!<br />¿Qué necesitas hoy?</h1>
                 <p>Encuentra tus alimentos frescos directamente del campo a tu mesa en minutos. Cosecha del día garantizada.</p>
                 <div className={styles['banner-meta']}>
                   <span><IconCheck size={13} /> 100% Calidad local</span>
@@ -144,18 +156,6 @@ export default function CatalogPage() {
                 />
               ))}
             </div>
-
-            {/* CTA Banner */}
-            <div className={styles['cta-banner']}>
-              <div className={styles['cta-banner-left']}>
-                <div className={styles['cta-icon']}>🛒</div>
-                <div>
-                  <h4>¿No encuentras lo que buscas?</h4>
-                  <p>Nuestro equipo de compradores personales puede buscar productos específicos para ti.</p>
-                </div>
-              </div>
-              <button className={styles['btn-secondary']}>Solicitar producto especial</button>
-            </div>
           </main>
         </div>
       </div>
@@ -168,8 +168,21 @@ export default function CatalogPage() {
         cartSubtotal={cartSubtotal} 
         deliveryCost={deliveryCost} 
         cartTotal={cartTotal} 
-        changeQty={changeQty} 
-        removeFromCart={removeFromCart} 
+        changeQty={changeQty}
+        removeFromCart={removeFromCart}
+        onCheckout={() => { setCartOpen(false); setCheckoutOpen(true); }}
+      />
+
+      <CheckoutModal
+        open={checkoutOpen}
+        onClose={closeCheckout}
+        cart={cart}
+        cartCount={cartCount}
+        cartSubtotal={cartSubtotal}
+        deliveryCost={deliveryCost}
+        cartTotal={cartTotal}
+        clearCart={() => setCart([])}
+        onOrderPlaced={(receipt) => setLatestOrderId(receipt.id)}
       />
     </>
   );

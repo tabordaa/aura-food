@@ -136,6 +136,12 @@
   background: #fff;
 }
 
+.input-wrapper input::-ms-reveal,
+.input-wrapper input::-ms-clear,
+.input-wrapper input::-webkit-credentials-auto-fill-button {
+  display: none;
+}
+
 .input-toggle {
   position: absolute;
   right: 14px;

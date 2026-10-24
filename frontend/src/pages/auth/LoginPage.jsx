@@ -1,17 +1,34 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { IconCart, IconMail, IconLock, IconEye, IconEyeOff, IconArrowRight, IconShield, IconGoogle } from '../../components/Icons';
+import { useNavigate, Navigate, useSearchParams } from 'react-router';
+import { useAuth } from '../../hooks/useAuth';
+import { IconCart, IconMail, IconLock, IconEye, IconEyeOff, IconArrowRight, IconShield } from '../../components/Icons';
 import styles from './Auth.module.css';
 
 export default function LoginPage() {
   const navigate = useNavigate();
+  const { login, user } = useAuth();
   const [showPass, setShowPass] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const [searchParams] = useSearchParams();
+  const sessionExpired = searchParams.get('expired') === '1';
 
-  const handleSubmit = (e) => {
+  // Redirigir si ya está logueado
+  if (user) {
+    if (user.role === 'admin') return <Navigate to="/admin" replace />;
+    if (user.role === 'domiciliario') return <Navigate to="/delivery" replace />;
+    return <Navigate to="/catalog" replace />;
+  }
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    navigate('/catalog');
+    try {
+      setError('');
+      await login(email, password);
+    } catch (err) {
+      setError(err.message);
+    }
   };
 
   return (
@@ -21,12 +38,6 @@ export default function LoginPage() {
           <IconCart size={22} />
           {import.meta.env.VITE_APP_NAME || 'Aura Food'}
         </div>
-        <button
-          style={{ background: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.875rem', color: 'var(--text-secondary)', fontWeight: 500, border: 'none' }}
-          onClick={() => navigate('/catalog')}
-        >
-          ← Ir a la tienda
-        </button>
       </div>
 
       <div className={styles['auth-body']}>
@@ -40,6 +51,12 @@ export default function LoginPage() {
           </div>
 
           <form onSubmit={handleSubmit}>
+            {error && <div style={{ color: 'red', marginBottom: '1rem', fontSize: '0.875rem' }}>{error}</div>}
+            {!error && sessionExpired && (
+              <div style={{ color: 'var(--text-secondary)', marginBottom: '1rem', fontSize: '0.875rem' }}>
+                Tu sesión expiró. Inicia sesión de nuevo para continuar.
+              </div>
+            )}
             <div className={styles['form-group']}>
               <label htmlFor="login-email">Correo electrónico</label>
               <div className={styles['input-wrapper']}>
@@ -59,17 +76,10 @@ export default function LoginPage() {
               </div>
             </div>
 
-            <div className={styles['forgot-row']}>
-              <a href="#forgot">¿Olvidaste tu contraseña?</a>
-            </div>
-
             <button type="submit" className={styles['btn-primary']}>
               Iniciar Sesión <IconArrowRight size={16} />
             </button>
           </form>
-
-          <div className={styles['divider']}>— o continúa con —</div>
-          <button className={styles['btn-google']} type="button"><IconGoogle size={18} /> Continuar con Google</button>
 
           <div className={styles['auth-bottom-link']}>
             ¿No tienes cuenta?{' '}
