@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator, model_validator
 
 from .models import OrderStatus, RoleEnum
 
@@ -50,11 +50,43 @@ class ProductBase(BaseModel):
     origin: str | None = None
     unit: str | None = None
 
-class ProductCreate(ProductBase):
-    pass
+# Categorías que muestra el catálogo (frontend: CatalogPage.CATEGORIES)
+ProductCategory = Literal["frutas", "dairy", "meat", "cleaning", "bakery"]
+
+class ProductCreate(BaseModel):
+    name: str = Field(min_length=2, max_length=120)
+    description: str | None = Field(default=None, max_length=1000)
+    price: float = Field(gt=0, le=10_000_000)
+    old_price: float | None = Field(default=None, gt=0, le=10_000_000)
+    category: ProductCategory
+    # Solo enlaces http(s): evita esquemas como javascript: o data: en la imagen
+    image_url: str | None = Field(default=None, max_length=500, pattern=r"^https?://\S+$")
+    stock: int = Field(default=0, ge=0, le=100_000)
+    tag: str | None = Field(default=None, max_length=40)
+    origin: str | None = Field(default=None, max_length=60)
+    unit: str | None = Field(default=None, max_length=40)
+
+    @field_validator("name", "description", "image_url", "tag", "origin", "unit", mode="before")
+    @classmethod
+    def blank_to_none(cls, value):
+        # Los formularios envían "" en los campos opcionales vacíos
+        if isinstance(value, str):
+            value = value.strip()
+            return value or None
+        return value
+
+    @model_validator(mode="after")
+    def old_price_above_price(self):
+        if self.old_price is not None and self.old_price <= self.price:
+            raise ValueError("El precio anterior debe ser mayor que el precio actual para mostrarse como oferta")
+        return self
+
+class ProductUpdate(ProductCreate):
+    is_active: bool = True
 
 class ProductResponse(ProductBase):
     id: int
+    is_active: bool = True
 
     model_config = ConfigDict(from_attributes=True)
 

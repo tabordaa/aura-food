@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useAuth } from '../../hooks/useAuth';
-import { IconCheck, IconMapPin, IconSearch } from '../../components/Icons';
+import { IconCheck, IconMapPin } from '../../components/Icons';
+import AdminLayout from './AdminLayout';
 
 import { formatOrderId, formatPrice, parseServerDate } from '../../utils/orders';
 import { orderService } from '../../services/order.service';
@@ -29,13 +29,6 @@ const TABS = [
   { id: 'cancelado', label: 'Cancelados' },
 ];
 
-const NAV = [
-  { id: 'pedidos',  icon: '🧾', label: 'Pedidos' },
-  { id: 'products', icon: '🥑', label: 'Productos' },
-  { id: 'clients',  icon: '👥', label: 'Clientes' },
-  { id: 'settings', icon: '⚙️', label: 'Configuración' },
-];
-
 function timeAgo(date, now) {
   const minutes = Math.max(0, Math.round((now - date) / 60000));
   if (minutes < 1) return 'Hace un momento';
@@ -50,13 +43,12 @@ function isSameDay(a, b) {
 }
 
 function describeItems(items) {
-  const names = items.map(i => `Prod #${i.product_id}`);
+  const names = items.map(i => i.product_name || `Prod #${i.product_id}`);
   const units = items.reduce((acc, i) => acc + i.quantity, 0);
   return { names: names.join(', '), units };
 }
 
 export default function AdminDashboard() {
-  const { user, logout } = useAuth();
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [online, setOnline] = useState(true);
@@ -148,63 +140,14 @@ export default function AdminDashboard() {
   const selectTab = (id) => { setTab(id); setPage(1); };
 
   return (
-    <div className={styles.layout}>
-      {/* Sidebar */}
-      <aside className={styles.sidebar}>
-        <div className={styles.brand}>
-          <span className={styles['brand-logo']}>🌿</span>
-          <div>
-            <strong>Aura Food</strong>
-            <span className={styles['brand-badge']}>Admin</span>
-          </div>
-        </div>
-
-        <nav className={styles.nav}>
-          {NAV.map(item => (
-            <button
-              key={item.id}
-              type="button"
-              className={[styles['nav-item'], item.id === 'pedidos' ? styles.active : ''].join(' ')}
-              disabled={item.id !== 'pedidos'}
-              title={item.id !== 'pedidos' ? 'Próximamente' : undefined}
-            >
-              <span>{item.icon}</span> {item.label}
-              {item.id !== 'pedidos' && <em>Pronto</em>}
-              {item.id === 'pedidos' && counts.pendiente > 0 && <b className={styles['nav-badge']}>{counts.pendiente}</b>}
-            </button>
-          ))}
-        </nav>
-
-        <div className={styles.profile}>
-          <span className={styles.avatar}>A</span>
-          <div>
-            <strong>{user?.name || 'Administrador'}</strong>
-            <small>Supermercado</small>
-          </div>
-          <button type="button" className={styles.logout} onClick={logout} aria-label="Cerrar sesión" title="Cerrar sesión">⎋</button>
-        </div>
-      </aside>
-
-      {/* Contenido */}
-      <main className={styles.main}>
-        <header className={styles.topbar}>
-          <label className={styles.search}>
-            <IconSearch size={16} />
-            <input
-              placeholder="Buscar por # de pedido, cliente, dirección o producto…"
-              value={search}
-              onChange={e => { setSearch(e.target.value); setPage(1); }}
-            />
-          </label>
-          <span className={[styles.connection, online ? '' : styles.offline].join(' ')}>
-            <span className={styles['connection-dot']} />
-            {online ? 'Tienda en línea' : 'Sin conexión con el servidor'}
-          </span>
-          <span className={styles.today}>
-            📅 {now.toLocaleDateString('es-CO', { weekday: 'long', day: 'numeric', month: 'long' })}
-          </span>
-        </header>
-
+    <AdminLayout
+      active="pedidos"
+      pendingCount={counts.pendiente || 0}
+      search={search}
+      onSearch={value => { setSearch(value); setPage(1); }}
+      searchPlaceholder="Buscar por # de pedido, cliente, dirección o producto…"
+      online={online}
+    >
         <div className={styles.content}>
           <div className={styles['page-head']}>
             <div>
@@ -388,13 +331,12 @@ export default function AdminDashboard() {
             </div>
           </section>
         </div>
-      </main>
 
       {toast && (
         <div className={[styles.toast, styles[`toast-${toast.type}`]].join(' ')} role="status">
           {toast.text}
         </div>
       )}
-    </div>
+    </AdminLayout>
   );
 }
