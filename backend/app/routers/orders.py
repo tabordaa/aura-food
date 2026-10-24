@@ -9,13 +9,8 @@ from ..database import get_db
 
 router = APIRouter()
 
-# Orden en que avanza un pedido. Solo se permite pasar al siguiente estado.
-STATUS_FLOW = [
-    models.OrderStatus.pendiente,
-    models.OrderStatus.preparado,
-    models.OrderStatus.asignado,
-    models.OrderStatus.entregado,
-]
+# Flujo de un pedido: pendiente → preparado (admin acepta) → asignado (domiciliario lo toma)
+# → entregado (ese mismo domiciliario lo entrega). Rechazar y cancelar cierran el pedido desde pendiente.
 
 @router.post("", response_model=schemas.OrderResponse, status_code=status.HTTP_201_CREATED)
 def create_order(
@@ -78,13 +73,6 @@ def create_order(
     return order
 
 
-# Qué estados puede asignar cada rol del personal con PATCH /status (solo los del flujo normal;
-# rechazar y cancelar tienen sus propios endpoints porque además devuelven el stock)
-STATUS_PERMISSIONS = {
-    models.RoleEnum.admin: set(STATUS_FLOW),
-    models.RoleEnum.domiciliario: {models.OrderStatus.asignado, models.OrderStatus.entregado},
-}
-
 STAFF_ROLES = (models.RoleEnum.admin, models.RoleEnum.domiciliario)
 
 
@@ -135,6 +123,31 @@ def list_orders(
     return query.order_by(models.Order.created_at.desc(), models.Order.id.desc()).offset(offset).limit(limit).all()
 
 
+@router.get("/courier/me", response_model=schemas.CourierOrders)
+def list_courier_orders(
+    history_limit: int = Query(30, ge=1, le=100),
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(oauth2.require_roles(models.RoleEnum.domiciliario)),
+):
+    """Panel del domiciliario: pedidos listos para tomar, sus entregas en curso y su historial."""
+    def query():
+        return db.query(models.Order).options(*ORDER_LOAD_OPTIONS)
+
+    available = (
+        query().filter(models.Order.status == models.OrderStatus.preparado)
+        .order_by(models.Order.created_at, models.Order.id).all()
+    )
+    active = (
+        query().filter(models.Order.courier_id == current_user.id, models.Order.status == models.OrderStatus.asignado)
+        .order_by(models.Order.created_at, models.Order.id).all()
+    )
+    history = (
+        query().filter(models.Order.courier_id == current_user.id, models.Order.status == models.OrderStatus.entregado)
+        .order_by(models.Order.delivered_at.desc(), models.Order.id.desc()).limit(history_limit).all()
+    )
+    return {"available": available, "active": active, "history": history}
+
+
 @router.get("/me", response_model=list[schemas.OrderResponse])
 def list_my_orders(
     limit: int = Query(50, ge=1, le=200),
@@ -173,30 +186,65 @@ def update_order_status(
     order_id: int,
     status_in: schemas.OrderStatusUpdate,
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(oauth2.require_roles(*STAFF_ROLES)),
+    _: models.User = Depends(oauth2.require_roles(models.RoleEnum.admin)),
 ):
-    if status_in.status not in STATUS_FLOW:
-        raise HTTPException(status_code=400, detail="Para rechazar o cancelar un pedido usa su acción específica")
-    if status_in.status not in STATUS_PERMISSIONS[current_user.role]:
-        raise HTTPException(status_code=403, detail="No tienes permisos para asignar ese estado")
+    """La tienda acepta un pedido pendiente. El resto del flujo tiene acciones propias: el domiciliario
+    lo toma (/take) y lo entrega (/deliver); rechazar y cancelar devuelven el stock."""
+    if status_in.status != models.OrderStatus.preparado:
+        raise HTTPException(status_code=400, detail="Desde aquí solo se puede aceptar un pedido (pasarlo a preparado)")
 
     order = get_order_or_404(order_id, db, lock=True)
-    if order.status not in STATUS_FLOW:
-        raise HTTPException(status_code=400, detail=f"El pedido ya está {order.status.value}")
-
-    current = STATUS_FLOW.index(order.status)
-    new = STATUS_FLOW.index(status_in.status)
-    is_delivery_completion = (
-        status_in.status == models.OrderStatus.entregado
-        and order.status in (models.OrderStatus.preparado, models.OrderStatus.asignado)
-    )
-    if new != current + 1 and not is_delivery_completion:
+    if order.status != models.OrderStatus.pendiente:
         raise HTTPException(
-            status_code=400,
+            status_code=409,
             detail=f"No se puede pasar de '{order.status.value}' a '{status_in.status.value}'",
         )
 
-    order.status = status_in.status
+    order.status = models.OrderStatus.preparado
+    db.commit()
+    db.refresh(order)
+    return order
+
+
+@router.post("/{order_id}/take", response_model=schemas.OrderResponse)
+def take_order(
+    order_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(oauth2.require_roles(models.RoleEnum.domiciliario)),
+):
+    """El domiciliario toma un pedido preparado y queda asignado a él."""
+    # El bloqueo evita que dos domiciliarios tomen el mismo pedido a la vez: el segundo espera y ve 'asignado'
+    order = get_order_or_404(order_id, db, lock=True)
+    if order.status == models.OrderStatus.asignado:
+        mine = order.courier_id == current_user.id
+        raise HTTPException(
+            status_code=409, detail="Ya tomaste este pedido" if mine else "Otro domiciliario ya tomó este pedido"
+        )
+    if order.status != models.OrderStatus.preparado:
+        raise HTTPException(status_code=409, detail="Este pedido no está listo para recoger")
+
+    order.status = models.OrderStatus.asignado
+    order.courier_id = current_user.id
+    db.commit()
+    db.refresh(order)
+    return order
+
+
+@router.post("/{order_id}/deliver", response_model=schemas.OrderResponse)
+def deliver_order(
+    order_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(oauth2.require_roles(models.RoleEnum.domiciliario)),
+):
+    """Solo el domiciliario que tomó el pedido puede marcarlo como entregado."""
+    order = get_order_or_404(order_id, db, lock=True)
+    if order.courier_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Este pedido está asignado a otro domiciliario")
+    if order.status != models.OrderStatus.asignado:
+        raise HTTPException(status_code=409, detail=f"El pedido ya está {order.status.value}")
+
+    order.status = models.OrderStatus.entregado
+    order.delivered_at = models.utc_now()
     db.commit()
     db.refresh(order)
     return order

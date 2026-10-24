@@ -158,6 +158,12 @@ class OrderResponse(OrderBase):
 
     model_config = ConfigDict(from_attributes=True)
 
+
+class CourierOrders(BaseModel):
+    available: list[OrderResponse]
+    active: list[OrderResponse]
+    history: list[OrderResponse]
+
 # --- Tokens ---
 class Token(BaseModel):
     access_token: str
