@@ -68,6 +68,19 @@
   color: var(--primary);
 }
 .brand svg { width: 22px; height: 22px; flex-shrink: 0; }
+.brand-lg { font-size: 1.4rem; }
+
+/* Mensajes sobre el formulario (mismos colores de error y aviso que el resto de la app) */
+.form-error,
+.form-notice {
+  margin-bottom: 1rem;
+  padding: 10px 14px;
+  border-radius: var(--radius-sm);
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+.form-error { background: #fff0f0; color: #b3261e; border: 1px solid #f2b8b5; }
+.form-notice { background: #FFF3CD; color: #856404; }
 
 /* Auth card brand */
 .card-brand {

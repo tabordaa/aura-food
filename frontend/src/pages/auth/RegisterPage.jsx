@@ -38,7 +38,7 @@ export default function RegisterPage() {
     if (form.password.length < 8) { setError('La contraseña debe tener al menos 8 caracteres'); return; }
     if (form.password !== form.confirm) { setError('Las contraseñas no coinciden'); return; }
     if (!accepted) { setError('Debes aceptar los Términos y Condiciones'); return; }
-    
+
     try {
       setError('');
       // Enviar solo los campos que espera el backend
@@ -63,13 +63,13 @@ export default function RegisterPage() {
       <div className={styles['auth-body']}>
         <div className={[styles['auth-card'], styles['auth-card-register']].join(' ')}>
           <div className={styles['card-brand']}>
-            <div className={styles['brand']} style={{ fontSize: '1.4rem' }}><IconCart size={26} /> {import.meta.env.VITE_APP_NAME || 'Aura Food'}</div>
+            <div className={[styles.brand, styles['brand-lg']].join(' ')}><IconCart size={26} /> {import.meta.env.VITE_APP_NAME || 'Aura Food'}</div>
             <h2>Crea tu cuenta</h2>
             <p className={styles['subtitle']}>Compra tu mercado desde casa, rápido y fácil</p>
           </div>
 
           <form onSubmit={handleSubmit}>
-            {error && <div style={{ color: 'red', marginBottom: '1rem', fontSize: '0.875rem' }}>{error}</div>}
+            {error && <div className={styles['form-error']} role="alert">{error}</div>}
             <div className={styles['form-group']}>
               <label htmlFor="reg-name">Nombre completo</label>
               <div className={styles['input-wrapper']}>
