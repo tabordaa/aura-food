@@ -5,6 +5,7 @@ from dotenv import load_dotenv
 from sqlalchemy import engine_from_config, pool
 
 from alembic import context
+from app.database import normalize_database_url
 from app.models import Base
 
 load_dotenv()
@@ -13,7 +14,7 @@ config = context.config
 
 # Las migraciones usan la conexión directa (pooler de sesión) si existe: el pooler de transacciones
 # no es adecuado para DDL. Si no hay ninguna, se usa la misma SQLite local que la app.
-database_url = os.getenv("DIRECT_URL") or os.getenv("DATABASE_URL") or "sqlite:///./sql_app.db"
+database_url = normalize_database_url(os.getenv("DIRECT_URL") or os.getenv("DATABASE_URL") or "sqlite:///./sql_app.db")
 config.set_main_option("sqlalchemy.url", database_url.replace("%", "%%"))
 
 if config.config_file_name is not None:

@@ -12,13 +12,14 @@ from alembic.config import Config
 from sqlalchemy import create_engine, inspect, text
 
 from alembic import command
+from app.database import normalize_database_url
 
 BACKEND_DIR = os.path.dirname(os.path.dirname(__file__))
 
 
 @pytest.fixture()
 def migration_url(tmp_path, monkeypatch):
-    url = os.getenv("MIGRATION_TEST_URL") or f"sqlite:///{tmp_path / 'migrations.db'}"
+    url = normalize_database_url(os.getenv("MIGRATION_TEST_URL") or f"sqlite:///{tmp_path / 'migrations.db'}")
     # env.py usa DIRECT_URL primero: se fija explícitamente para no tocar nunca la BD del .env
     monkeypatch.setenv("DIRECT_URL", url)
     yield url
