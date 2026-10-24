@@ -16,13 +16,21 @@ const FIELD_MESSAGES = {
   items: 'El pedido debe tener entre 1 y 50 productos',
   payment_method: 'Selecciona un método de pago válido',
   reason: 'Escribe el motivo del rechazo (mínimo 3 caracteres)',
+  price: 'El precio debe ser mayor que 0',
+  old_price: 'El precio anterior debe ser mayor que el precio actual',
+  stock: 'El stock no puede ser negativo',
+  image_url: 'La imagen debe ser un enlace que empiece por http:// o https://',
+  category: 'Selecciona una categoría válida',
 };
 
 export function getErrorMessage(detail, fallback = 'Error en la petición') {
   if (typeof detail === 'string') return detail;
   if (Array.isArray(detail) && detail.length > 0) {
     const field = detail[0].loc?.[detail[0].loc.length - 1];
-    return FIELD_MESSAGES[field] || 'Revisa los datos ingresados';
+    if (FIELD_MESSAGES[field]) return FIELD_MESSAGES[field];
+    // Solo los mensajes de nuestros validadores están en español ("Value error, ...")
+    const msg = detail[0].msg || '';
+    return msg.startsWith('Value error, ') ? msg.slice('Value error, '.length) : 'Revisa los datos ingresados';
   }
   return fallback;
 }

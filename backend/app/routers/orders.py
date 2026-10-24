@@ -52,6 +52,8 @@ def create_order(
         )
         if not product:
             raise HTTPException(status_code=404, detail=f"No existe el producto con id {product_id}")
+        if not product.is_active:
+            raise HTTPException(status_code=400, detail=f"'{product.name}' ya no está disponible")
         if product.stock < quantity:
             raise HTTPException(
                 status_code=400,

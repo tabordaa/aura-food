@@ -7,19 +7,13 @@ import CartDrawer from '../../components/CartDrawer';
 import CheckoutModal from '../../components/CheckoutModal';
 import ActiveOrderBanner from '../../components/ActiveOrderBanner';
 import { isActiveOrder } from '../../utils/orders';
+import { CATEGORIES } from '../../utils/categories';
 import { useAuth } from '../../hooks/useAuth';
 import { productService } from '../../services/product.service';
 import { orderService } from '../../services/order.service';
 import { configService } from '../../services/config.service';
 import styles from './Catalog.module.css';
 
-const CATEGORIES = [
-  { id: 'frutas',   label: 'Frutas y Verduras', icon: '🥦' },
-  { id: 'dairy',    label: 'Lácteos',            icon: '🥛' },
-  { id: 'meat',     label: 'Carnes',             icon: '🥩' },
-  { id: 'cleaning', label: 'Aseo del Hogar',     icon: '🧴' },
-  { id: 'bakery',   label: 'Panadería',          icon: '🥐' },
-];
 
 
 
