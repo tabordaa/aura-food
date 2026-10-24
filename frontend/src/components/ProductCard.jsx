@@ -1,10 +1,7 @@
 import { useState } from 'react';
 import { IconHeart, IconPlus } from './Icons';
+import { formatPrice } from '../utils/format';
 import styles from '../pages/catalog/Catalog.module.css';
-
-function formatPrice(n) {
-  return '$' + n.toLocaleString('es-CO');
-}
 
 export default function ProductCard({ product, favorites, toggleFav, addToCart }) {
   const [imgError, setImgError] = useState(false);
@@ -13,7 +10,7 @@ export default function ProductCard({ product, favorites, toggleFav, addToCart }
   return (
     <div className={styles['product-card']}>
       <div className={styles['card-image-area']}>
-        <span className={[styles['card-tag'], product.oldPrice ? styles['tag-deal'] : ''].join(' ')}>
+        <span className={[styles['card-tag'], product.old_price ? styles['tag-deal'] : ''].join(' ')}>
           {product.tag}
         </span>
         {product.image_url && !imgError ? (
@@ -45,7 +42,7 @@ export default function ProductCard({ product, favorites, toggleFav, addToCart }
       <div className={styles['card-footer']}>
         <div className={styles['card-price-group']}>
           <span className={styles['card-price-label']}>Precio</span>
-          {product.oldPrice && <span className={styles['card-price-old']}>{formatPrice(product.oldPrice)}</span>}
+          {product.old_price && <span className={styles['card-price-old']}>{formatPrice(product.old_price)}</span>}
           <span className={styles['card-price']}>{formatPrice(product.price)}</span>
         </div>
         <button className={styles['btn-add']} onClick={() => addToCart(product)}>

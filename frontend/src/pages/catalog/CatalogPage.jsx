@@ -7,7 +7,7 @@ import CartDrawer from '../../components/CartDrawer';
 import CheckoutModal from '../../components/CheckoutModal';
 import ActiveOrderBanner from '../../components/ActiveOrderBanner';
 import { getSavedOrders } from '../../utils/orders';
-import { useAuth } from '../../context/AuthContext';
+import { useAuth } from '../../hooks/useAuth';
 import { productService } from '../../services/product.service';
 import styles from './Catalog.module.css';
 
@@ -116,7 +116,7 @@ export default function CatalogPage() {
             {/* Welcome Banner */}
             <div className={styles['welcome-banner']}>
               <div className={styles['banner-left']}>
-                <div className={styles['banner-badge']}><IconTruck size={13} /> Envío gratis en órdenes hoy</div>
+                <div className={styles['banner-badge']}><IconTruck size={13} /> Domicilio a tu puerta</div>
                 <h1>¡Hola, {user?.name || 'Invitado'}!<br />¿Qué necesitas hoy?</h1>
                 <p>Encuentra tus alimentos frescos directamente del campo a tu mesa en minutos. Cosecha del día garantizada.</p>
                 <div className={styles['banner-meta']}>
@@ -155,18 +155,6 @@ export default function CatalogPage() {
                   addToCart={addToCart} 
                 />
               ))}
-            </div>
-
-            {/* CTA Banner */}
-            <div className={styles['cta-banner']}>
-              <div className={styles['cta-banner-left']}>
-                <div className={styles['cta-icon']}>🛒</div>
-                <div>
-                  <h4>¿No encuentras lo que buscas?</h4>
-                  <p>Nuestro equipo de compradores personales puede buscar productos específicos para ti.</p>
-                </div>
-              </div>
-              <button className={styles['btn-secondary']}>Solicitar producto especial</button>
             </div>
           </main>
         </div>

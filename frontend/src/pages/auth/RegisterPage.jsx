@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, Navigate } from 'react-router';
-import { useAuth } from '../../context/AuthContext';
-import { IconCart, IconMail, IconLock, IconEye, IconEyeOff, IconUser, IconPhone, IconArrowRight, IconShield, IconGoogle, IconMapPin } from '../../components/Icons';
+import { useAuth } from '../../hooks/useAuth';
+import { IconCart, IconMail, IconLock, IconEye, IconEyeOff, IconUser, IconPhone, IconArrowRight, IconShield, IconMapPin } from '../../components/Icons';
 import styles from './Auth.module.css';
 
 function getStrength(p) {
@@ -136,8 +136,6 @@ export default function RegisterPage() {
             <button type="submit" className={styles['btn-primary']}>Crear Cuenta <IconArrowRight size={16} /></button>
           </form>
 
-          <div className={styles['divider']}>— o regístrate con —</div>
-          <button className={styles['btn-google']} type="button"><IconGoogle size={18} /> Continuar con Google</button>
           <div className={styles['auth-bottom-link']}>
             ¿Ya tienes cuenta?{' '}
             <a href="#" onClick={e => { e.preventDefault(); navigate('/login'); }}>Inicia sesión</a>

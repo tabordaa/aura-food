@@ -1,4 +1,4 @@
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../hooks/useAuth';
 import { IconCart, IconSearch, IconTruck, IconUser } from './Icons';
 import styles from '../pages/catalog/Catalog.module.css';
 

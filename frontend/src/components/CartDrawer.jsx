@@ -1,8 +1,5 @@
+import { formatPrice } from '../utils/format';
 import styles from '../pages/catalog/Catalog.module.css';
-
-function formatPrice(n) {
-  return '$' + n.toLocaleString('es-CO');
-}
 
 export default function CartDrawer({ 
   cartOpen, 

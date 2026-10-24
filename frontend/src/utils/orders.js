@@ -12,18 +12,8 @@ export function stepIndex(status) {
   return Math.max(0, ORDER_STEPS.findIndex(s => s.status === status));
 }
 
-export function formatPrice(n) {
-  return '$' + Math.round(n).toLocaleString('es-CO');
-}
-
-export function formatOrderId(id) {
-  return '#' + String(id).padStart(5, '0');
-}
-
-// El backend guarda la fecha en UTC sin zona horaria
-export function parseServerDate(value) {
-  return new Date(/(Z|[+-]\d\d:\d\d)$/.test(value) ? value : value + 'Z');
-}
+// Se reexportan desde utils/format para no cambiar los imports existentes
+export { formatOrderId, formatPrice, parseServerDate } from './format';
 
 /*
  * Mientras no exista el login, los pedidos del cliente se recuerdan en este

@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
-import { useAuth } from '../../context/AuthContext';
+import { useAuth } from '../../hooks/useAuth';
 import { IconCheck, IconMapPin, IconTruck } from '../../components/Icons';
 import { orderService } from '../../services/order.service';
+import { formatOrderId, formatPrice } from '../../utils/format';
 import styles from './Delivery.module.css';
 
 const PICKUP_ADDRESS = import.meta.env.VITE_PICKUP_ADDRESS || 'Punto de recogida Aura Food';
@@ -26,14 +27,6 @@ async function fetchDeliveryOrders() {
     .sort((first, second) => second.id - first.id);
 }
 
-function formatCurrency(amount) {
-  return new Intl.NumberFormat('es-CO', {
-    style: 'currency',
-    currency: 'COP',
-    maximumFractionDigits: 0,
-  }).format(Number(amount) || 0);
-}
-
 function OrderCard({ order, isUpdating, onMarkDelivered }) {
   const status = normalizeStatus(order.status);
   const itemCount = Array.isArray(order.items)
@@ -47,7 +40,7 @@ function OrderCard({ order, isUpdating, onMarkDelivered }) {
       <div className={styles['order-header']}>
         <div>
           <span className={styles['order-label']}>Pedido</span>
-          <h2>#{order.id}</h2>
+          <h2>{formatOrderId(order.id)}</h2>
         </div>
         <span className={`${styles['status']} ${styles[`status-${status}`]}`}>
           {status === 'preparado' ? 'Preparado' : 'Asignado'}
@@ -78,7 +71,7 @@ function OrderCard({ order, isUpdating, onMarkDelivered }) {
 
       <div className={styles['order-meta']}>
         <span>{itemCount} {itemCount === 1 ? 'producto' : 'productos'}</span>
-        <strong>{formatCurrency(order.total_price)}</strong>
+        <strong>{formatPrice(order.total_price)}</strong>
       </div>
 
       <button
@@ -124,9 +117,9 @@ export default function DeliveryPage() {
     try {
       await orderService.updateStatus(orderId, 'entregado');
       setOrders(currentOrders => currentOrders.filter(order => order.id !== orderId));
-      setNotice(`El pedido #${orderId} fue marcado como entregado.`);
+      setNotice(`El pedido ${formatOrderId(orderId)} fue marcado como entregado.`);
     } catch (updateError) {
-      setError(`No fue posible actualizar el pedido #${orderId}. ${updateError.message}`);
+      setError(`No fue posible actualizar el pedido ${formatOrderId(orderId)}. ${updateError.message}`);
     } finally {
       setUpdatingOrderId(null);
     }

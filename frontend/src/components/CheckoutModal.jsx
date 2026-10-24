@@ -4,6 +4,7 @@ import { IconMapPin, IconLock, IconShield, IconCheck, IconArrowRight, IconPhone,
 import PaymentCardForm from './PaymentCardForm';
 import { BRAND_LABELS, detectBrand, onlyDigits, validateCard } from './cardUtils';
 import { saveOrder } from '../utils/orders';
+import { formatOrderId, formatPrice } from '../utils/format';
 import { orderService } from '../services/order.service';
 import styles from './CheckoutModal.module.css';
 
@@ -14,10 +15,6 @@ const EMPTY_CARD = { number: '', name: '', expiry: '', cvv: '' };
 const EMPTY_DELIVERY = { address: '', detail: '', phone: '', notes: '' };
 const STEPS = ['Carrito', 'Entrega', 'Pago', 'Confirmación'];
 const TRACKING = ['Recibido', 'Preparando', 'En camino', 'Entregado'];
-
-function formatPrice(n) {
-  return '$' + Math.round(n).toLocaleString('es-CO');
-}
 
 function formatPhone(digits) {
   return [digits.slice(0, 3), digits.slice(3, 6), digits.slice(6, 10)].filter(Boolean).join(' ');
@@ -186,7 +183,7 @@ export default function CheckoutModal({
             <div className={styles['success-icon']}><IconCheck size={34} /></div>
             <h2>¡Tu pedido va en camino!</h2>
             <p className={styles['success-sub']}>
-              Pedido <strong>#{String(receipt.id).padStart(5, '0')}</strong> • Llega en <strong>35 - 45 min</strong>
+              Pedido <strong>{formatOrderId(receipt.id)}</strong> • Llega en <strong>35 - 45 min</strong>
             </p>
 
             <ol className={styles.tracking}>
