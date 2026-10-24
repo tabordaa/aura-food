@@ -2,7 +2,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
-from .. import models, schemas
+from .. import models, oauth2, schemas
 from ..database import get_db
 
 router = APIRouter()
@@ -18,19 +18,19 @@ STATUS_FLOW = [
 @router.post("", response_model=schemas.OrderResponse, status_code=status.HTTP_201_CREATED)
 def create_order(
     order_in: schemas.OrderCreate,
-    user_id: int = Query(..., description="ID del cliente que hace el pedido (temporal hasta tener login)"),
     db: Session = Depends(get_db),
+    current_user: models.User = Depends(oauth2.get_current_user),
 ):
+    user_id = current_user.id
     if not order_in.items:
         raise HTTPException(status_code=400, detail="El pedido debe tener al menos un producto")
-
-    user = db.query(models.User).filter(models.User.id == user_id).first()
-    if not user:
-        raise HTTPException(status_code=404, detail=f"No existe el usuario con id {user_id}")
 
     order = models.Order(
         user_id=user_id,
         delivery_address=order_in.delivery_address,
+        phone=order_in.phone,
+        notes=order_in.notes,
+        payment_method=order_in.payment_method,
         status=models.OrderStatus.pendiente,
         total_price=0,
     )
