@@ -33,6 +33,24 @@ Todas están documentadas en [`.env.example`](.env.example). Las importantes:
 
 Nunca subas `.env` al repositorio: tiene la cadena de conexión real de la BD compartida.
 
+## Login con Google (opcional)
+
+Está desactivado mientras `GOOGLE_CLIENT_ID` (backend) y `VITE_GOOGLE_CLIENT_ID` (frontend) estén vacíos: el botón no
+aparece y `POST /api/auth/google` responde 503. Para activarlo:
+
+1. En [Google Cloud Console](https://console.cloud.google.com/) crea un proyecto (o usa uno existente).
+2. **APIs y servicios → Pantalla de consentimiento de OAuth**: tipo *Externo*, nombre "Aura Food" y tu correo de
+   soporte. Mientras esté en modo *Prueba*, agrega como *usuarios de prueba* las cuentas que van a entrar.
+3. **APIs y servicios → Credenciales → Crear credenciales → ID de cliente de OAuth** → tipo *Aplicación web*.
+   En *Orígenes autorizados de JavaScript* agrega `http://localhost:5173` (y la URL donde se publique el frontend).
+   No hace falta ningún URI de redirección.
+4. Copia el *ID de cliente* (termina en `.apps.googleusercontent.com`) en `GOOGLE_CLIENT_ID` del `backend/.env` y en
+   `VITE_GOOGLE_CLIENT_ID` del `frontend/.env`, y reinicia ambos servidores.
+
+El backend verifica la firma del token con las llaves públicas de Google, que fue emitido para este ID de cliente y que
+el correo esté verificado. Si el correo ya existe, inicia sesión en esa cuenta; si no, crea un cliente nuevo. El ID de
+cliente no es secreto (va en el navegador); el *secreto de cliente* no se usa.
+
 ## Base de datos y migraciones (Alembic)
 
 El esquema se gestiona solo con migraciones en `alembic/versions/`:
@@ -72,6 +90,7 @@ ruff check .
 | Método | Ruta | Quién |
 |--------|------|-------|
 | POST | `/auth/register`, `/auth/login` | Público (el registro siempre crea clientes) |
+| POST | `/auth/google` | Público (si `GOOGLE_CLIENT_ID` está definido) |
 | GET / PATCH | `/auth/me` | Usuario autenticado (solo nombre, dirección y celular) |
 | GET | `/products` | Público (`?sort=best_sellers`; incluye `units_sold`) |
 | GET | `/products/manage` · POST `/products` · PUT/DELETE `/products/{id}` | Admin (DELETE = desactivar) |

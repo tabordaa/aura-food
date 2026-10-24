@@ -234,6 +234,10 @@ class CourierOrders(BaseModel):
     history: list[OrderResponse]
 
 # --- Tokens ---
+class GoogleLogin(BaseModel):
+    # ID token (JWT) que devuelve Google Identity Services en el navegador
+    credential: str = Field(min_length=20, max_length=4096)
+
 class Token(BaseModel):
     access_token: str
     token_type: str

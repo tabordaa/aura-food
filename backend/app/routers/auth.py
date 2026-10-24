@@ -1,8 +1,11 @@
+import secrets
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security.oauth2 import OAuth2PasswordRequestForm
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
-from .. import database, models, oauth2, schemas, utils
+from .. import database, google_auth, models, oauth2, schemas, utils
 
 router = APIRouter(tags=['Authentication'])
 
@@ -55,6 +58,43 @@ def login(user_credentials: OAuth2PasswordRequestForm = Depends(), db: Session =
     access_token = oauth2.create_access_token(data={"user_id": str(user.id)})
 
     return {"access_token": access_token, "token_type": "bearer"}
+
+@router.post("/google", response_model=schemas.Token)
+def login_with_google(data: schemas.GoogleLogin, db: Session = Depends(database.get_db)):
+    """Inicia sesión (o registra como cliente) a quien se autentique con su cuenta de Google."""
+    client_id = google_auth.get_google_client_id()
+    if not client_id:
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                            detail="El inicio de sesión con Google no está habilitado")
+
+    try:
+        info = google_auth.verify_google_credential(data.credential, client_id)
+    except ValueError:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
+                            detail="No pudimos verificar tu cuenta de Google. Intenta de nuevo.") from None
+    # Solo se confía en el correo si Google lo verificó; si no, alguien podría suplantar una cuenta existente
+    email = (info.get("email") or "").lower()
+    if not email or not info.get("email_verified"):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
+                            detail="Tu cuenta de Google no tiene un correo verificado")
+
+    user = db.query(models.User).filter(func.lower(models.User.email) == email).first()
+    if not user:
+        name = (info.get("name") or email.split("@")[0]).strip()[:100]
+        user = models.User(
+            name=name if len(name) >= 2 else email.split("@")[0],
+            email=email,
+            role=models.RoleEnum.cliente,
+            # Sin contraseña conocida: estas cuentas entran con Google (el hash aleatorio no coincide con nada)
+            password_hash=utils.hash_password(secrets.token_urlsafe(32)),
+        )
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+
+    access_token = oauth2.create_access_token(data={"user_id": str(user.id)})
+    return {"access_token": access_token, "token_type": "bearer"}
+
 
 @router.get("/me", response_model=schemas.UserResponse)
 def get_current_user(current_user: models.User = Depends(oauth2.get_current_user)):

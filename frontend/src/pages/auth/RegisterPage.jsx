@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate, Navigate } from 'react-router';
 import { useAuth } from '../../hooks/useAuth';
 import { IconCart, IconMail, IconLock, IconEye, IconEyeOff, IconUser, IconPhone, IconArrowRight, IconShield, IconMapPin } from '../../components/Icons';
+import GoogleButton from '../../components/GoogleButton';
 import styles from './Auth.module.css';
 
 function getStrength(p) {
@@ -17,12 +18,21 @@ const strengthLabels = ['', 'Muy débil', 'Débil', 'Regular', 'Buena', 'Segura'
 
 export default function RegisterPage() {
   const navigate = useNavigate();
-  const { register, user } = useAuth();
+  const { register, user, loginWithGoogle } = useAuth();
   const [showPass, setShowPass] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [accepted, setAccepted] = useState(false);
   const [form, setForm] = useState({ name: '', email: '', phone: '', address: '', password: '', confirm: '' });
   const [error, setError] = useState('');
+
+  const handleGoogle = async (credential) => {
+    setError('');
+    try {
+      await loginWithGoogle(credential);
+    } catch (err) {
+      setError(err instanceof TypeError ? 'Sin conexión con el servidor. Intenta de nuevo.' : err.message);
+    }
+  };
   const handleChange = f => e => setForm(prev => ({ ...prev, [f]: e.target.value }));
   const strength = getStrength(form.password);
 
@@ -135,6 +145,8 @@ export default function RegisterPage() {
             </div>
             <button type="submit" className={styles['btn-primary']}>Crear Cuenta <IconArrowRight size={16} /></button>
           </form>
+
+          <GoogleButton label="o regístrate con" onCredential={handleGoogle} />
 
           <div className={styles['auth-bottom-link']}>
             ¿Ya tienes cuenta?{' '}
