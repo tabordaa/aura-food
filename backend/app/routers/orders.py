@@ -1,4 +1,4 @@
-from typing import List, Optional
+
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
@@ -38,13 +38,18 @@ def create_order(
     total = 0.0
     for item in order_in.items:
         if item.quantity <= 0:
-            raise HTTPException(status_code=400, detail=f"La cantidad del producto {item.product_id} debe ser mayor a 0")
+            raise HTTPException(
+                status_code=400, detail=f"La cantidad del producto {item.product_id} debe ser mayor a 0"
+            )
 
         product = db.query(models.Product).filter(models.Product.id == item.product_id).first()
         if not product:
             raise HTTPException(status_code=404, detail=f"No existe el producto con id {item.product_id}")
         if product.stock < item.quantity:
-            raise HTTPException(status_code=400, detail=f"Stock insuficiente para '{product.name}' (disponible: {product.stock})")
+            raise HTTPException(
+                status_code=400,
+                detail=f"Stock insuficiente para '{product.name}' (disponible: {product.stock})",
+            )
 
         # El precio se toma de la base de datos, no del cliente, para que no lo puedan alterar
         product.stock -= item.quantity
@@ -62,9 +67,9 @@ def create_order(
     return order
 
 
-@router.get("", response_model=List[schemas.OrderResponse])
+@router.get("", response_model=list[schemas.OrderResponse])
 def list_orders(
-    status_filter: Optional[models.OrderStatus] = Query(None, alias="status", description="Filtrar por estado (opcional)"),
+    status_filter: models.OrderStatus | None = Query(None, alias="status", description="Filtrar por estado (opcional)"),
     db: Session = Depends(get_db),
 ):
     query = db.query(models.Order)
