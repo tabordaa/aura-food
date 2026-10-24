@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { authService } from '../services/auth.service';
 import { AUTH_EXPIRED_EVENT } from '../services/api';
 import { AuthContext } from './authContextObject';
+import { clearLegacyOrderStorage } from '../utils/orders';
 import { useNavigate } from 'react-router';
 
 export function AuthProvider({ children }) {
@@ -37,6 +38,7 @@ export function AuthProvider({ children }) {
   const login = async (email, password) => {
     const data = await authService.login(email, password);
     localStorage.setItem('token', data.access_token);
+    clearLegacyOrderStorage();
     const userData = await authService.getMe();
     setUser(userData);
     
@@ -58,6 +60,7 @@ export function AuthProvider({ children }) {
 
   const logout = () => {
     localStorage.removeItem('token');
+    clearLegacyOrderStorage();
     setUser(null);
     navigate('/login');
   };

@@ -69,6 +69,10 @@ class OrderItemCreate(OrderItemBase):
 class OrderItemResponse(OrderItemBase):
     id: int
     price_at_purchase: float
+    # Datos del producto para mostrar el pedido sin pedir el catálogo completo
+    product_name: str | None = None
+    product_image_url: str | None = None
+    product_unit: str | None = None
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -89,12 +93,23 @@ class OrderCreate(OrderBase):
 class OrderStatusUpdate(BaseModel):
     status: OrderStatus
 
+class UserSummary(BaseModel):
+    id: int
+    name: str | None = None
+
+    model_config = ConfigDict(from_attributes=True)
+
 class OrderResponse(OrderBase):
     id: int
     user_id: int
     total_price: float
+    delivery_fee: float = 0
     status: OrderStatus
+    rejection_reason: str | None = None
+    courier: UserSummary | None = None
     created_at: datetime
+    updated_at: datetime | None = None
+    delivered_at: datetime | None = None
     items: list[OrderItemResponse]
 
     model_config = ConfigDict(from_attributes=True)

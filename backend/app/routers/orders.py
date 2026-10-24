@@ -83,8 +83,15 @@ STATUS_PERMISSIONS = {
 STAFF_ROLES = (models.RoleEnum.admin, models.RoleEnum.domiciliario)
 
 
+# Carga en lote los productos de cada item y el domiciliario (evita una consulta por fila)
+ORDER_LOAD_OPTIONS = (
+    selectinload(models.Order.items).selectinload(models.OrderItem.product),
+    selectinload(models.Order.courier),
+)
+
+
 def get_order_or_404(order_id: int, db: Session) -> models.Order:
-    order = db.query(models.Order).filter(models.Order.id == order_id).first()
+    order = db.query(models.Order).options(*ORDER_LOAD_OPTIONS).filter(models.Order.id == order_id).first()
     if not order:
         raise HTTPException(status_code=404, detail=f"No existe el pedido con id {order_id}")
     return order
@@ -99,12 +106,32 @@ def list_orders(
     _: models.User = Depends(oauth2.require_roles(*STAFF_ROLES)),
 ):
     # selectinload trae los items de todos los pedidos en una sola consulta extra (evita N+1)
-    query = db.query(models.Order).options(selectinload(models.Order.items))
+    query = db.query(models.Order).options(*ORDER_LOAD_OPTIONS)
     if status_filter:
         query = query.filter(models.Order.status == status_filter)
     return query.order_by(models.Order.created_at.desc(), models.Order.id.desc()).offset(offset).limit(limit).all()
 
 
+@router.get("/me", response_model=list[schemas.OrderResponse])
+def list_my_orders(
+    limit: int = Query(50, ge=1, le=200),
+    offset: int = Query(0, ge=0),
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(oauth2.get_current_user),
+):
+    """Pedidos del usuario autenticado, del más reciente al más antiguo."""
+    return (
+        db.query(models.Order)
+        .options(*ORDER_LOAD_OPTIONS)
+        .filter(models.Order.user_id == current_user.id)
+        .order_by(models.Order.created_at.desc(), models.Order.id.desc())
+        .offset(offset)
+        .limit(limit)
+        .all()
+    )
+
+
+# Debe ir después de /me: si no, FastAPI intentaría leer "me" como order_id
 @router.get("/{order_id}", response_model=schemas.OrderResponse)
 def get_order(
     order_id: int,

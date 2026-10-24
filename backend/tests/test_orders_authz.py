@@ -94,3 +94,33 @@ def test_list_orders_supports_pagination(client, order, admin_headers):
     assert client.get("/api/orders?limit=1&offset=0", headers=admin_headers).json()[0]["id"] == order.id
     assert client.get("/api/orders?limit=1&offset=1", headers=admin_headers).json() == []
     assert client.get("/api/orders?limit=1000", headers=admin_headers).status_code == 422
+
+
+def test_my_orders_requires_authentication(client):
+    assert client.get("/api/orders/me").status_code == 401
+
+
+def test_my_orders_returns_only_own_orders(client, order, customer_headers, other_customer_headers):
+    mine = client.get("/api/orders/me", headers=customer_headers).json()
+    others = client.get("/api/orders/me", headers=other_customer_headers).json()
+
+    assert [o["id"] for o in mine] == [order.id]
+    assert others == []
+
+
+def test_order_response_includes_product_details(client, order, customer_headers, products):
+    item = client.get("/api/orders/me", headers=customer_headers).json()[0]["items"][0]
+
+    assert item["product_name"] == products[0].name
+    assert item["product_unit"] == products[0].unit
+
+
+def test_order_response_includes_delivery_details(client, db, order, courier, customer_headers):
+    order.courier_id = courier.id
+    order.rejection_reason = None
+    db.commit()
+
+    body = client.get(f"/api/orders/{order.id}", headers=customer_headers).json()
+
+    assert body["courier"] == {"id": courier.id, "name": courier.name}
+    assert body["delivery_fee"] == 0

@@ -6,9 +6,10 @@ import ProductCard from '../../components/ProductCard';
 import CartDrawer from '../../components/CartDrawer';
 import CheckoutModal from '../../components/CheckoutModal';
 import ActiveOrderBanner from '../../components/ActiveOrderBanner';
-import { getSavedOrders } from '../../utils/orders';
+import { isActiveOrder } from '../../utils/orders';
 import { useAuth } from '../../hooks/useAuth';
 import { productService } from '../../services/product.service';
+import { orderService } from '../../services/order.service';
 import styles from './Catalog.module.css';
 
 const CATEGORIES = [
@@ -33,7 +34,7 @@ export default function CatalogPage() {
   const [favorites, setFavorites] = useState([]);
   const [cartOpen, setCartOpen] = useState(false);
   const [checkoutOpen, setCheckoutOpen] = useState(false);
-  const [latestOrderId, setLatestOrderId] = useState(() => getSavedOrders()[0]?.id ?? null);
+  const [latestOrderId, setLatestOrderId] = useState(null);
   const [dbProducts, setDbProducts] = useState([]);
 
   useEffect(() => {
@@ -42,6 +43,16 @@ export default function CatalogPage() {
         setDbProducts(data);
       })
       .catch(err => console.error('Error cargando catálogo:', err));
+  }, []);
+
+  // Muestra el aviso de seguimiento si el cliente tiene un pedido en curso
+  useEffect(() => {
+    orderService.getMyOrders(5)
+      .then(orders => {
+        const active = orders.find(o => isActiveOrder(o.status));
+        if (active) setLatestOrderId(active.id);
+      })
+      .catch(() => {});
   }, []);
 
   const cartCount = cart.reduce((acc, item) => acc + item.qty, 0);
