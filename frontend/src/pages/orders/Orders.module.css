@@ -65,7 +65,9 @@
 
 /* Buttons */
 .btn-primary,
-.btn-secondary {
+.btn-secondary,
+.btn-cancel,
+.btn-danger {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -79,6 +81,12 @@
 .btn-primary:hover { background: var(--primary-hover); transform: translateY(-1px); }
 .btn-secondary { background: #fff; color: var(--primary); border: 1.5px solid var(--primary); }
 .btn-secondary:hover { background: var(--primary-light); }
+/* Acciones destructivas: mismos colores que Rechazar en el panel admin */
+.btn-cancel { background: #fff; color: #b3261e; border: 1.5px solid #f2b8b5; }
+.btn-cancel:hover { background: #fff0f0; border-color: #d93025; }
+.btn-danger { background: #d93025; color: #fff; }
+.btn-danger:hover:not(:disabled) { background: #b3261e; }
+.btn-danger:disabled, .btn-secondary:disabled { opacity: 0.6; cursor: progress; }
 
 /* Loading / empty / not found */
 .state-card {
@@ -142,6 +150,11 @@
   animation: pulse 2s infinite;
 }
 .hero.delivered .hero-icon { animation: none; }
+/* Pedido rechazado o cancelado: mismo tono neutro que el estado "Rechazado" del panel admin */
+.hero.closed { background: linear-gradient(120deg, #F1F4F1 0%, #E4E9E4 100%); }
+.hero.closed .hero-icon { animation: none; }
+.hero.closed .hero-status h1 { color: #4F5B4F; }
+.hero.closed .live { color: #6b776b; }
 .hero-status h1 {
   font-size: 1.9rem;
   font-weight: 800;
@@ -347,6 +360,19 @@
   justify-content: center;
   margin-top: 6px;
 }
+
+.confirm {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  justify-content: center;
+  margin-top: 6px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #b3261e;
+}
+.action-error { text-align: center; color: #b3261e; font-size: 0.85rem; font-weight: 600; }
 
 /* Mis pedidos */
 .list-head h1 { font-size: 1.6rem; font-weight: 800; color: var(--text-primary); }

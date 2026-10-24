@@ -1,6 +1,8 @@
+import { useState } from 'react';
 import { Link, useParams } from 'react-router';
 import { IconMapPin, IconPhone, IconCheck } from '../../components/Icons';
 import useOrderStatus from '../../hooks/useOrderStatus';
+import { orderService } from '../../services/order.service';
 import {
   CLOSED_STATUSES, ORDER_STEPS, DELIVERY_MINUTES, PAYMENT_LABELS, stepIndex, formatPrice, formatOrderId, parseServerDate,
 } from '../../utils/orders';
@@ -16,7 +18,23 @@ function formatPhone(phone) {
 
 export default function OrderTrackingPage() {
   const { id } = useParams();
-  const { order, loading, notFound, error, updatedAt } = useOrderStatus(id);
+  const { order, loading, notFound, error, updatedAt, replaceOrder } = useOrderStatus(id);
+  const [confirmCancel, setConfirmCancel] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
+  const [actionError, setActionError] = useState('');
+
+  async function cancelOrder() {
+    setCancelling(true);
+    setActionError('');
+    try {
+      replaceOrder(await orderService.cancelOrder(order.id));
+      setConfirmCancel(false);
+    } catch (err) {
+      setActionError(err instanceof TypeError ? 'Sin conexión con el servidor. Intenta de nuevo.' : err.message);
+    } finally {
+      setCancelling(false);
+    }
+  }
 
   let content;
   if (loading && !order) {
@@ -54,7 +72,7 @@ export default function OrderTrackingPage() {
     content = (
       <>
         {/* Estado actual */}
-        <section className={[styles.hero, delivered ? styles.delivered : ''].join(' ')}>
+        <section className={[styles.hero, delivered ? styles.delivered : '', closed ? styles.closed : ''].join(' ')}>
           <div className={styles['hero-main']}>
             <p className={styles['hero-meta']}>
               Pedido <strong>{formatOrderId(order.id)}</strong> • Hecho a las {formatTime(createdAt)}
@@ -68,7 +86,7 @@ export default function OrderTrackingPage() {
             </div>
             <span className={styles.live}>
               {finished
-                ? <><IconCheck size={12} /> Pedido finalizado</>
+                ? (closed ? <>Pedido {closed.label.toLowerCase()}</> : <><IconCheck size={12} /> Pedido finalizado</>)
                 : <><span className={styles['live-dot']} /> En vivo • actualizado {updatedAt ? formatTime(updatedAt) : ''}</>}
             </span>
             {error && <p className={styles['hero-error']}>{error}</p>}
@@ -158,10 +176,28 @@ export default function OrderTrackingPage() {
           </section>
         </div>
 
-        <div className={styles.actions}>
-          <Link to="/catalog" className={styles['btn-primary']}>Seguir comprando</Link>
-          <Link to="/pedidos" className={styles['btn-secondary']}>Ver todos mis pedidos</Link>
-        </div>
+        {order.status === 'pendiente' && confirmCancel ? (
+          <div className={styles.confirm}>
+            <span>¿Seguro que quieres cancelar el pedido? Los productos vuelven a la tienda.</span>
+            <button type="button" className={styles['btn-danger']} onClick={cancelOrder} disabled={cancelling}>
+              {cancelling ? 'Cancelando…' : 'Sí, cancelar'}
+            </button>
+            <button type="button" className={styles['btn-secondary']} onClick={() => setConfirmCancel(false)} disabled={cancelling}>
+              No
+            </button>
+          </div>
+        ) : (
+          <div className={styles.actions}>
+            <Link to="/catalog" className={styles['btn-primary']}>Seguir comprando</Link>
+            <Link to="/pedidos" className={styles['btn-secondary']}>Ver todos mis pedidos</Link>
+            {order.status === 'pendiente' && (
+              <button type="button" className={styles['btn-cancel']} onClick={() => setConfirmCancel(true)}>
+                Cancelar pedido
+              </button>
+            )}
+          </div>
+        )}
+        {actionError && <p className={styles['action-error']} role="alert">{actionError}</p>}
       </>
     );
   }

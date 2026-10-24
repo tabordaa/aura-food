@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { orderService } from '../services/order.service';
 import { isActiveOrder } from '../utils/orders';
 
@@ -42,5 +42,10 @@ export default function useOrderStatus(id) {
     };
   }, [id]);
 
-  return state;
+  // Reemplaza el pedido con la respuesta de una acción (por ejemplo, cancelar) sin esperar al siguiente sondeo
+  const replaceOrder = useCallback((order) => {
+    setState(s => ({ ...s, order, updatedAt: new Date() }));
+  }, []);
+
+  return { ...state, replaceOrder };
 }
