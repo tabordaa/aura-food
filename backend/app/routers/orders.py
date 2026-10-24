@@ -1,4 +1,6 @@
 
+from decimal import Decimal
+
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session, selectinload
 
@@ -36,7 +38,7 @@ def create_order(
         total_price=0,
     )
 
-    total = 0.0
+    total = Decimal(0)
     # Se bloquean las filas de los productos (SELECT ... FOR UPDATE) hasta el commit para que dos pedidos
     # simultáneos no vendan el mismo stock. Se recorren por id para que todos bloqueen en el mismo orden
     # y no se produzcan interbloqueos.
