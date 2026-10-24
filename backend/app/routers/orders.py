@@ -79,6 +79,7 @@ STAFF_ROLES = (models.RoleEnum.admin, models.RoleEnum.domiciliario)
 # Carga en lote los productos de cada item y el domiciliario (evita una consulta por fila)
 ORDER_LOAD_OPTIONS = (
     selectinload(models.Order.items).selectinload(models.OrderItem.product),
+    selectinload(models.Order.customer),
     selectinload(models.Order.courier),
 )
 

@@ -406,6 +406,7 @@
   border: 1px solid var(--border);
   padding: 1px 8px;
   border-radius: var(--radius-xl);
+  white-space: nowrap;
 }
 .total { font-size: 1rem; font-weight: 800; white-space: nowrap; }
 
@@ -648,4 +649,14 @@ form.confirm { flex-wrap: wrap; }
   .form-grid { grid-template-columns: 1fr; }
   .image-row { flex-direction: column; align-items: stretch; }
   .preview { width: 100%; height: 140px; }
+}
+
+/* ---------- Clients ---------- */
+.client strong { display: block; color: var(--text-primary); font-size: 0.9rem; }
+.kpi-name {
+  font-size: 1.35rem;
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }

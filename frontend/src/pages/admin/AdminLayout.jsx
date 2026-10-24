@@ -6,7 +6,7 @@ import styles from './Admin.module.css';
 const NAV = [
   { id: 'pedidos',  icon: '🧾', label: 'Pedidos',   path: '/admin' },
   { id: 'products', icon: '🥑', label: 'Productos', path: '/admin/productos' },
-  { id: 'clients',  icon: '👥', label: 'Clientes' },
+  { id: 'clients',  icon: '👥', label: 'Clientes',  path: '/admin/clientes' },
   { id: 'settings', icon: '⚙️', label: 'Configuración' },
 ];
 

@@ -2,7 +2,8 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { IconCheck, IconMapPin } from '../../components/Icons';
 import AdminLayout from './AdminLayout';
 
-import { formatOrderId, formatPrice, parseServerDate } from '../../utils/orders';
+import { formatOrderId, formatPrice, initials, parseServerDate } from '../../utils/format';
+import { adminService } from '../../services/admin.service';
 import { orderService } from '../../services/order.service';
 import styles from './Admin.module.css';
 
@@ -38,10 +39,6 @@ function timeAgo(date, now) {
   return date.toLocaleDateString('es-CO', { day: 'numeric', month: 'short' });
 }
 
-function isSameDay(a, b) {
-  return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
-}
-
 function describeItems(items) {
   const names = items.map(i => i.product_name || `Prod #${i.product_id}`);
   const units = items.reduce((acc, i) => acc + i.quantity, 0);
@@ -56,6 +53,7 @@ function courierNote(order) {
 
 export default function AdminDashboard() {
   const [orders, setOrders] = useState([]);
+  const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [online, setOnline] = useState(true);
   const [lastUpdate, setLastUpdate] = useState(null);
@@ -68,9 +66,10 @@ export default function AdminDashboard() {
   const [toast, setToast] = useState(null);
 
   // Los setState ocurren en los callbacks de la promesa (cuando llega la respuesta), no al llamar la función
-  const loadOrders = useCallback(() => orderService.getOrders()
-    .then(list => {
+  const loadOrders = useCallback(() => Promise.all([orderService.getOrders(), adminService.getStats()])
+    .then(([list, summary]) => {
       setOrders(list);
+      setStats(summary);
       setOnline(true);
       setLastUpdate(new Date());
     })
@@ -98,6 +97,7 @@ export default function AdminDashboard() {
         ? await orderService.rejectOrder(order.id, rejectReason.trim())
         : await orderService.updateStatus(order.id, status);
       setOrders(list => list.map(o => (o.id === updated.id ? updated : o)));
+      adminService.getStats().then(setStats).catch(() => {});
       setConfirmRejectId(null);
       setRejectReason('');
       setToast({
@@ -125,9 +125,11 @@ export default function AdminDashboard() {
     return c;
   }, [orders]);
 
-  const todayOrders = orders.filter(o => isSameDay(parseServerDate(o.created_at), now) && !['rechazado', 'cancelado'].includes(o.status));
-  const todayRevenue = todayOrders.reduce((acc, o) => acc + o.total_price, 0);
-  const inProgress = (counts.preparado || 0) + (counts.asignado || 0);
+  // Los indicadores vienen del servidor (cubren todos los pedidos, no solo los cargados en la tabla)
+  const byStatus = stats?.orders_by_status ?? counts;
+  const totalOrders = stats?.total_orders ?? orders.length;
+  const todayCount = stats?.today_orders ?? 0;
+  const inProgress = (byStatus.preparado || 0) + (byStatus.asignado || 0);
 
   const term = search.trim().toLowerCase();
   const visible = orders.filter(o => {
@@ -136,7 +138,7 @@ export default function AdminDashboard() {
     return formatOrderId(o.id).includes(term)
       || String(o.id) === term
       || o.delivery_address.toLowerCase().includes(term)
-      || `cliente ${o.user_id}`.includes(term)
+      || (o.customer?.name ?? '').toLowerCase().includes(term)
       || describeItems(o.items).names.toLowerCase().includes(term);
   });
   const totalPages = Math.max(1, Math.ceil(visible.length / PAGE_SIZE));
@@ -148,7 +150,7 @@ export default function AdminDashboard() {
   return (
     <AdminLayout
       active="pedidos"
-      pendingCount={counts.pendiente || 0}
+      pendingCount={byStatus.pendiente || 0}
       search={search}
       onSearch={value => { setSearch(value); setPage(1); }}
       searchPlaceholder="Buscar por # de pedido, cliente, dirección o producto…"
@@ -172,26 +174,26 @@ export default function AdminDashboard() {
           <section className={styles.kpis}>
             <div className={styles.kpi}>
               <div className={styles['kpi-head']}><span>Pedidos nuevos</span><i>🔔</i></div>
-              <p className={styles['kpi-value']}>{counts.pendiente || 0}<small> por aceptar</small></p>
-              {counts.pendiente > 0
+              <p className={styles['kpi-value']}>{byStatus.pendiente || 0}<small> por aceptar</small></p>
+              {byStatus.pendiente > 0
                 ? <span className={[styles.chip, styles['chip-alert']].join(' ')}>● Atención requerida</span>
                 : <span className={styles.chip}>Todo al día</span>}
             </div>
             <div className={styles.kpi}>
               <div className={styles['kpi-head']}><span>Ingresos de hoy</span><i>💵</i></div>
-              <p className={styles['kpi-value']}>{formatPrice(todayRevenue)}</p>
-              <span className={styles['kpi-foot']}>{todayOrders.length} pedido{todayOrders.length !== 1 ? 's' : ''} hoy</span>
+              <p className={styles['kpi-value']}>{formatPrice(stats?.today_revenue ?? 0)}</p>
+              <span className={styles['kpi-foot']}>{todayCount} pedido{todayCount !== 1 ? 's' : ''} hoy · incluye domicilio</span>
             </div>
             <div className={styles.kpi}>
               <div className={styles['kpi-head']}><span>En curso</span><i>🛵</i></div>
               <p className={styles['kpi-value']}>{inProgress}<small> en preparación o camino</small></p>
-              <span className={styles['kpi-foot']}>{counts.preparado || 0} preparando • {counts.asignado || 0} en camino</span>
+              <span className={styles['kpi-foot']}>{byStatus.preparado || 0} preparando • {byStatus.asignado || 0} en camino</span>
             </div>
             <div className={styles.kpi}>
               <div className={styles['kpi-head']}><span>Completados</span><i>✅</i></div>
-              <p className={styles['kpi-value']}>{counts.entregado || 0}<small> de {orders.length} totales</small></p>
+              <p className={styles['kpi-value']}>{byStatus.entregado || 0}<small> de {totalOrders} totales</small></p>
               <span className={styles['kpi-foot']}>
-                {orders.length ? Math.round(((counts.entregado || 0) / orders.length) * 100) : 0}% entregados
+                {totalOrders ? Math.round(((byStatus.entregado || 0) / totalOrders) * 100) : 0}% entregados
               </span>
             </div>
           </section>
@@ -255,8 +257,8 @@ export default function AdminDashboard() {
                       </td>
                       <td>
                         <div className={styles.client}>
-                          <span className={styles['client-avatar']}>C{order.user_id}</span>
-                          <span>Cliente #{order.user_id}</span>
+                          <span className={styles['client-avatar']}>{initials(order.customer?.name)}</span>
+                          <span>{order.customer?.name ?? `Cliente #${order.user_id}`}</span>
                         </div>
                       </td>
                       <td>
