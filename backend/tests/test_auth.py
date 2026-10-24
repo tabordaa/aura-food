@@ -90,3 +90,31 @@ def test_register_rejects_invalid_email(client):
     )
 
     assert response.status_code == 422
+
+
+def test_register_rejects_password_longer_than_72_bytes(client):
+    # 40 caracteres pero 80 bytes en UTF-8: bcrypt no lo admite
+    response = client.post(
+        "/api/auth/register",
+        json={"name": "Tildes", "email": "tildes@test.com", "password": "ñ" * 40},
+    )
+
+    assert response.status_code == 422
+
+
+def test_login_with_very_long_password_is_401_not_500(client, customer):
+    response = client.post("/api/auth/login", data={"username": customer.email, "password": "x" * 200})
+
+    assert response.status_code == 401
+
+
+def test_existing_bcrypt_hashes_still_verify():
+    import bcrypt
+
+    from app import utils
+
+    # Hash con el mismo formato que generaba passlib
+    legacy_hash = bcrypt.hashpw(b"admin123", bcrypt.gensalt()).decode()
+
+    assert utils.verify_password("admin123", legacy_hash)
+    assert not utils.verify_password("otra", legacy_hash)

@@ -20,7 +20,7 @@ def test_require_roles_rejects_other_roles(customer):
 
 
 def test_token_signed_with_old_hardcoded_key_is_rejected(client, admin):
-    from jose import jwt
+    import jwt
 
     forged = jwt.encode({"user_id": str(admin.id)}, "fallback_secret_key_if_env_fails_123", algorithm="HS256")
 

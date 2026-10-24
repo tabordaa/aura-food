@@ -3,7 +3,7 @@ import os
 # Las variables se definen antes de importar la app: load_dotenv no sobrescribe las que ya existen,
 # así los tests nunca tocan la base de datos compartida del .env.
 os.environ["DATABASE_URL"] = "sqlite://"
-os.environ["SECRET_KEY"] = "test-secret-key"
+os.environ["SECRET_KEY"] = "test-secret-key-only-for-the-automated-test-suite"
 
 import pytest  # noqa: E402
 from fastapi.testclient import TestClient  # noqa: E402

@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Literal
 
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
 from .models import OrderStatus, RoleEnum
 
@@ -18,6 +18,14 @@ class UserCreate(UserBase):
     # bcrypt solo usa los primeros 72 bytes, por eso se limita la longitud.
     password: str = Field(min_length=8, max_length=72)
 
+    @field_validator("password")
+    @classmethod
+    def password_fits_bcrypt(cls, value: str) -> str:
+        # El límite de bcrypt es en bytes: con tildes o emojis se puede pasar de 72 bytes con menos caracteres
+        if len(value.encode("utf-8")) > 72:
+            raise ValueError("La contraseña es demasiado larga")
+        return value
+
 class UserResponse(BaseModel):
     # Sin restricciones de longitud: describe datos ya guardados, no entrada del usuario
     id: int
@@ -27,8 +35,7 @@ class UserResponse(BaseModel):
     address: str | None = None
     phone: str | None = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 # --- Products ---
 class ProductBase(BaseModel):
@@ -49,8 +56,7 @@ class ProductCreate(ProductBase):
 class ProductResponse(ProductBase):
     id: int
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 # --- Orders ---
 class OrderItemBase(BaseModel):
@@ -64,8 +70,7 @@ class OrderItemResponse(OrderItemBase):
     id: int
     price_at_purchase: float
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 class OrderBase(BaseModel):
     delivery_address: str
@@ -92,8 +97,7 @@ class OrderResponse(OrderBase):
     created_at: datetime
     items: list[OrderItemResponse]
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 # --- Tokens ---
 class Token(BaseModel):
