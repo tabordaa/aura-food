@@ -3,7 +3,7 @@
    ========================================= */
 .layout {
   display: grid;
-  grid-template-columns: 250px 1fr;
+  grid-template-columns: 250px minmax(0, 1fr);
   min-height: 100vh;
   background: #F7FCF7;
 }
@@ -220,6 +220,7 @@
 .refresh-group { display: flex; align-items: center; gap: 14px; }
 .refresh-group small { font-size: 0.76rem; color: var(--text-muted); }
 .btn-refresh {
+  white-space: nowrap;
   display: inline-flex;
   align-items: center;
   gap: 8px;
@@ -674,6 +675,11 @@ form.confirm { flex-wrap: wrap; }
   margin-top: 2px;
 }
 
+@media (max-width: 1440px) {
+  /* Celdas un poco más compactas para que la tabla de pedidos quepa completa en un portátil */
+  .table th, .table td { padding-left: 10px; padding-right: 10px; }
+}
+
 @media (max-width: 1180px) {
   .kpis { grid-template-columns: repeat(2, 1fr); }
   .today { display: none; }
@@ -681,7 +687,7 @@ form.confirm { flex-wrap: wrap; }
 
 @media (max-width: 860px) {
   /* La barra lateral pasa a ser una franja superior con la navegación en fila */
-  .layout { grid-template-columns: 1fr; }
+  .layout { grid-template-columns: minmax(0, 1fr); }
   .sidebar {
     position: static;
     height: auto;
