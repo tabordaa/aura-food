@@ -4,7 +4,7 @@ from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from .routers import auth, config, orders, products
+from .routers import admin, auth, config, orders, products
 
 load_dotenv()
 
@@ -42,3 +42,4 @@ app.include_router(auth.router, prefix="/api/auth")
 app.include_router(orders.router, prefix="/api/orders", tags=["Orders"])
 app.include_router(products.router, prefix="/api/products", tags=["Products"])
 app.include_router(config.router, prefix="/api/config")
+app.include_router(admin.router, prefix="/api/admin")

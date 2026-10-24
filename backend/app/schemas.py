@@ -150,6 +150,7 @@ class OrderResponse(OrderBase):
     delivery_fee: float = 0
     status: OrderStatus
     rejection_reason: str | None = None
+    customer: UserSummary | None = None
     courier: UserSummary | None = None
     created_at: datetime
     updated_at: datetime | None = None
@@ -157,6 +158,29 @@ class OrderResponse(OrderBase):
     items: list[OrderItemResponse]
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class AdminStats(BaseModel):
+    orders_by_status: dict[str, int]
+    total_orders: int
+    today_orders: int
+    today_revenue: float
+    active_products: int
+    low_stock_products: int
+    out_of_stock_products: int
+    clients: int
+
+
+class ClientSummary(BaseModel):
+    id: int
+    name: str
+    email: str
+    phone: str | None = None
+    address: str | None = None
+    created_at: datetime | None = None
+    orders_count: int
+    total_spent: float
+    last_order_at: datetime | None = None
 
 
 class CourierOrders(BaseModel):
