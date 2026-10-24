@@ -33,7 +33,24 @@ def test_login_returns_token(client, customer):
 def test_login_rejects_wrong_password(client, customer):
     response = client.post("/api/auth/login", data={"username": customer.email, "password": "incorrecta"})
 
-    assert response.status_code in (401, 403)
+    assert response.status_code == 401
+    assert response.json()["detail"] == "Credenciales inválidas"
+
+
+def test_login_unknown_email_gives_same_error(client):
+    response = client.post("/api/auth/login", data={"username": "nadie@test.com", "password": PASSWORD})
+
+    assert response.status_code == 401
+    assert response.json()["detail"] == "Credenciales inválidas"
+
+
+def test_login_with_corrupted_hash_is_401_not_500(client, db, customer):
+    customer.password_hash = "no-es-un-hash-bcrypt"
+    db.commit()
+
+    response = client.post("/api/auth/login", data={"username": customer.email, "password": PASSWORD})
+
+    assert response.status_code == 401
 
 
 def test_me_requires_token(client):
@@ -45,3 +62,31 @@ def test_me_returns_current_user(client, customer, customer_headers):
 
     assert response.status_code == 200
     assert response.json()["email"] == customer.email
+
+
+def test_register_ignores_role_from_client(client):
+    response = client.post(
+        "/api/auth/register",
+        json={"name": "Atacante", "email": "atacante@test.com", "password": PASSWORD, "role": "admin"},
+    )
+
+    assert response.status_code == 201
+    assert response.json()["role"] == "cliente"
+
+
+def test_register_rejects_short_password(client):
+    response = client.post(
+        "/api/auth/register",
+        json={"name": "Corta", "email": "corta@test.com", "password": "1234567"},
+    )
+
+    assert response.status_code == 422
+
+
+def test_register_rejects_invalid_email(client):
+    response = client.post(
+        "/api/auth/register",
+        json={"name": "Correo", "email": "no-es-un-correo", "password": PASSWORD},
+    )
+
+    assert response.status_code == 422

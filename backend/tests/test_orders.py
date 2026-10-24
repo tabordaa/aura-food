@@ -7,18 +7,27 @@ def _order_payload(products, quantity=2):
     }
 
 
-def test_create_order_uses_database_prices_and_discounts_stock(client, db, customer, products):
-    response = client.post(f"/api/orders?user_id={customer.id}", json=_order_payload(products))
+def test_create_order_requires_authentication(client, products):
+    response = client.post("/api/orders", json=_order_payload(products))
+
+    assert response.status_code == 401
+
+
+def test_create_order_uses_database_prices_and_discounts_stock(client, db, customer, customer_headers, products):
+    response = client.post("/api/orders", json=_order_payload(products), headers=customer_headers)
 
     assert response.status_code == 201, response.text
     body = response.json()
     assert body["total_price"] == 9000
     assert body["status"] == "pendiente"
+    assert body["user_id"] == customer.id
+    assert body["phone"] == "3001234567"
+    assert body["payment_method"] == "cash"
     db.refresh(products[0])
     assert products[0].stock == 8
 
 
-def test_create_order_rejects_insufficient_stock(client, customer, products):
-    response = client.post(f"/api/orders?user_id={customer.id}", json=_order_payload(products, quantity=99))
+def test_create_order_rejects_insufficient_stock(client, customer_headers, products):
+    response = client.post("/api/orders", json=_order_payload(products, quantity=99), headers=customer_headers)
 
     assert response.status_code == 400

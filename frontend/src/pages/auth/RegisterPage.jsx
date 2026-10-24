@@ -35,6 +35,7 @@ export default function RegisterPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (form.password.length < 8) { setError('La contraseña debe tener al menos 8 caracteres'); return; }
     if (form.password !== form.confirm) { setError('Las contraseñas no coinciden'); return; }
     if (!accepted) { setError('Debes aceptar los Términos y Condiciones'); return; }
     
@@ -47,7 +48,6 @@ export default function RegisterPage() {
         phone: form.phone,
         address: form.address,
         password: form.password,
-        role: "cliente"
       });
     } catch (err) {
       setError(err.message);
@@ -102,7 +102,7 @@ export default function RegisterPage() {
               <label htmlFor="reg-password">Contraseña</label>
               <div className={styles['input-wrapper']}>
                 <span className={styles['input-icon']}><IconLock size={16} /></span>
-                <input id="reg-password" type={showPass ? 'text' : 'password'} placeholder="••••••••" value={form.password} onChange={handleChange('password')} required />
+                <input id="reg-password" type={showPass ? 'text' : 'password'} placeholder="••••••••" value={form.password} onChange={handleChange('password')} required minLength={8} maxLength={72} />
                 <button type="button" className={styles['input-toggle']} onClick={() => setShowPass(v => !v)}>
                   {showPass ? <IconEyeOff size={16} /> : <IconEye size={16} />}
                 </button>

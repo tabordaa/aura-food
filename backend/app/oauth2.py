@@ -1,4 +1,6 @@
 import os
+import secrets
+import warnings
 from datetime import datetime, timedelta
 
 from dotenv import load_dotenv
@@ -11,7 +13,18 @@ from . import database, models, schemas
 
 load_dotenv()
 
-SECRET_KEY = os.getenv("SECRET_KEY", "fallback_secret_key_if_env_fails_123")
+SECRET_KEY = os.getenv("SECRET_KEY")
+if not SECRET_KEY:
+    # Nunca hay una clave fija en el código: cualquiera que la leyera podría firmar tokens de admin
+    if os.getenv("ENV") == "production":
+        raise RuntimeError("Falta la variable de entorno SECRET_KEY")
+    SECRET_KEY = secrets.token_urlsafe(48)
+    warnings.warn(
+        "SECRET_KEY no está definida: se usa una clave temporal y las sesiones se cerrarán al reiniciar la API. "
+        'Genera una con: python -c "import secrets; print(secrets.token_urlsafe(48))" y ponla en backend/.env',
+        stacklevel=1,
+    )
+
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 7 # El token dura 1 semana para la demo
 
@@ -53,3 +66,13 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
         raise credentials_exception
 
     return user
+
+
+def require_roles(*roles: models.RoleEnum):
+    """Dependencia que exige que el usuario autenticado tenga alguno de los roles indicados."""
+    def checker(current_user: models.User = Depends(get_current_user)):
+        if current_user.role not in roles:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No tienes permisos para esta acción")
+        return current_user
+
+    return checker
