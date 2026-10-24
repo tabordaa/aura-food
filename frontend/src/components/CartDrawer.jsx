@@ -75,7 +75,7 @@ export default function CartDrawer({
             </div>
             <div className={styles['cart-summary-row']}>
               <span>Costo de domicilio</span>
-              <span>{formatPrice(deliveryCost)}</span>
+              <span>{deliveryCost == null ? 'Calculando…' : formatPrice(deliveryCost)}</span>
             </div>
             <div className={styles['cart-summary-divider']} />
             <div className={[styles['cart-summary-row'], styles['cart-total-row']].join(' ')}>

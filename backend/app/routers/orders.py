@@ -4,7 +4,7 @@ from decimal import Decimal
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session, selectinload
 
-from .. import models, oauth2, schemas
+from .. import models, oauth2, schemas, settings
 from ..database import get_db
 
 router = APIRouter()
@@ -67,7 +67,9 @@ def create_order(
             price_at_purchase=product.price,
         ))
 
-    order.total_price = total
+    # El domicilio se calcula en el servidor: el total guardado es exactamente lo que paga el cliente
+    order.delivery_fee = settings.get_delivery_fee()
+    order.total_price = total + order.delivery_fee
     db.add(order)
     db.commit()
     db.refresh(order)
