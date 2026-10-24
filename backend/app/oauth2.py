@@ -26,7 +26,8 @@ if not SECRET_KEY:
     )
 
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 7 # El token dura 1 semana para la demo
+# Duración de la sesión: una jornada de trabajo por defecto (antes era una semana)
+ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "480"))
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/auth/login")
 

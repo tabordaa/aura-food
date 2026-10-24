@@ -67,10 +67,27 @@ def create_order(
     return order
 
 
+# Qué estados puede asignar cada rol del personal
+STATUS_PERMISSIONS = {
+    models.RoleEnum.admin: set(models.OrderStatus),
+    models.RoleEnum.domiciliario: {models.OrderStatus.asignado, models.OrderStatus.entregado},
+}
+
+STAFF_ROLES = (models.RoleEnum.admin, models.RoleEnum.domiciliario)
+
+
+def get_order_or_404(order_id: int, db: Session) -> models.Order:
+    order = db.query(models.Order).filter(models.Order.id == order_id).first()
+    if not order:
+        raise HTTPException(status_code=404, detail=f"No existe el pedido con id {order_id}")
+    return order
+
+
 @router.get("", response_model=list[schemas.OrderResponse])
 def list_orders(
     status_filter: models.OrderStatus | None = Query(None, alias="status", description="Filtrar por estado (opcional)"),
     db: Session = Depends(get_db),
+    _: models.User = Depends(oauth2.require_roles(*STAFF_ROLES)),
 ):
     query = db.query(models.Order)
     if status_filter:
@@ -79,9 +96,14 @@ def list_orders(
 
 
 @router.get("/{order_id}", response_model=schemas.OrderResponse)
-def get_order(order_id: int, db: Session = Depends(get_db)):
-    order = db.query(models.Order).filter(models.Order.id == order_id).first()
-    if not order:
+def get_order(
+    order_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(oauth2.get_current_user),
+):
+    order = get_order_or_404(order_id, db)
+    # Un cliente solo ve sus pedidos; para los ajenos se responde 404 para no revelar que existen
+    if current_user.role not in STAFF_ROLES and order.user_id != current_user.id:
         raise HTTPException(status_code=404, detail=f"No existe el pedido con id {order_id}")
     return order
 
@@ -91,10 +113,12 @@ def update_order_status(
     order_id: int,
     status_in: schemas.OrderStatusUpdate,
     db: Session = Depends(get_db),
+    current_user: models.User = Depends(oauth2.require_roles(*STAFF_ROLES)),
 ):
-    order = db.query(models.Order).filter(models.Order.id == order_id).first()
-    if not order:
-        raise HTTPException(status_code=404, detail=f"No existe el pedido con id {order_id}")
+    if status_in.status not in STATUS_PERMISSIONS[current_user.role]:
+        raise HTTPException(status_code=403, detail="No tienes permisos para asignar ese estado")
+
+    order = get_order_or_404(order_id, db)
 
     current = STATUS_FLOW.index(order.status)
     new = STATUS_FLOW.index(status_in.status)
