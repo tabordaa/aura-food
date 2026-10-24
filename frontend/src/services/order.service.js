@@ -23,6 +23,11 @@ export const orderService = {
     return fetchWithAuth(`/api/orders/me?limit=${limit}`);
   },
 
+  // El cliente cancela su pedido mientras está pendiente (el stock vuelve al inventario)
+  async cancelOrder(id) {
+    return fetchWithAuth(`/api/orders/${id}/cancel`, { method: 'POST' });
+  },
+
   // Solo para admin y domiciliario
   async getOrders(status) {
     const query = status ? `?status=${encodeURIComponent(status)}` : '';

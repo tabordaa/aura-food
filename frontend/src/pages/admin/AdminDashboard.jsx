@@ -16,6 +16,7 @@ const STATUS_META = {
   asignado:  { label: 'En camino',      tone: 'progress' },
   entregado: { label: 'Entregado',      tone: 'done' },
   rechazado: { label: 'Rechazado',      tone: 'rejected' },
+  cancelado: { label: 'Cancelado',      tone: 'rejected' },
 };
 
 const TABS = [
@@ -25,6 +26,7 @@ const TABS = [
   { id: 'asignado',  label: 'En camino' },
   { id: 'entregado', label: 'Entregados' },
   { id: 'rechazado', label: 'Rechazados' },
+  { id: 'cancelado', label: 'Cancelados' },
 ];
 
 const NAV = [
@@ -121,7 +123,7 @@ export default function AdminDashboard() {
     return c;
   }, [orders]);
 
-  const todayOrders = orders.filter(o => isSameDay(parseServerDate(o.created_at), now) && o.status !== 'rechazado');
+  const todayOrders = orders.filter(o => isSameDay(parseServerDate(o.created_at), now) && !['rechazado', 'cancelado'].includes(o.status));
   const todayRevenue = todayOrders.reduce((acc, o) => acc + o.total_price, 0);
   const inProgress = (counts.preparado || 0) + (counts.asignado || 0);
 
@@ -244,7 +246,7 @@ export default function AdminDashboard() {
           {/* Tabla */}
           <section className={styles.panel}>
             <div className={styles.tabs} role="tablist">
-              {TABS.filter(t => t.id !== 'rechazado' || counts.rechazado).map(t => (
+              {TABS.filter(t => !['rechazado', 'cancelado'].includes(t.id) || counts[t.id]).map(t => (
                 <button
                   key={t.id}
                   type="button"

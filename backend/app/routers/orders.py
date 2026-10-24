@@ -76,9 +76,10 @@ def create_order(
     return order
 
 
-# Qué estados puede asignar cada rol del personal
+# Qué estados puede asignar cada rol del personal con PATCH /status (solo los del flujo normal;
+# rechazar y cancelar tienen sus propios endpoints porque además devuelven el stock)
 STATUS_PERMISSIONS = {
-    models.RoleEnum.admin: set(models.OrderStatus),
+    models.RoleEnum.admin: set(STATUS_FLOW),
     models.RoleEnum.domiciliario: {models.OrderStatus.asignado, models.OrderStatus.entregado},
 }
 
@@ -92,11 +93,29 @@ ORDER_LOAD_OPTIONS = (
 )
 
 
-def get_order_or_404(order_id: int, db: Session) -> models.Order:
-    order = db.query(models.Order).options(*ORDER_LOAD_OPTIONS).filter(models.Order.id == order_id).first()
+def get_order_or_404(order_id: int, db: Session, lock: bool = False) -> models.Order:
+    query = db.query(models.Order).options(*ORDER_LOAD_OPTIONS).filter(models.Order.id == order_id)
+    if lock:
+        # Bloquea el pedido hasta el commit para que dos cambios de estado simultáneos no se pisen
+        query = query.with_for_update(of=models.Order)
+    order = query.first()
     if not order:
         raise HTTPException(status_code=404, detail=f"No existe el pedido con id {order_id}")
     return order
+
+
+def restock_order_items(order: models.Order, db: Session) -> None:
+    """Devuelve al inventario las unidades de un pedido que no se va a entregar."""
+    product_ids = sorted({item.product_id for item in order.items})
+    # Mismo orden de bloqueo que al crear pedidos (por id) para evitar interbloqueos
+    products = {
+        p.id: p
+        for p in db.query(models.Product).filter(models.Product.id.in_(product_ids)).order_by(models.Product.id)
+        .with_for_update()
+        .all()
+    }
+    for item in order.items:
+        products[item.product_id].stock += item.quantity
 
 
 @router.get("", response_model=list[schemas.OrderResponse])
@@ -154,10 +173,14 @@ def update_order_status(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(oauth2.require_roles(*STAFF_ROLES)),
 ):
+    if status_in.status not in STATUS_FLOW:
+        raise HTTPException(status_code=400, detail="Para rechazar o cancelar un pedido usa su acción específica")
     if status_in.status not in STATUS_PERMISSIONS[current_user.role]:
         raise HTTPException(status_code=403, detail="No tienes permisos para asignar ese estado")
 
-    order = get_order_or_404(order_id, db)
+    order = get_order_or_404(order_id, db, lock=True)
+    if order.status not in STATUS_FLOW:
+        raise HTTPException(status_code=400, detail=f"El pedido ya está {order.status.value}")
 
     current = STATUS_FLOW.index(order.status)
     new = STATUS_FLOW.index(status_in.status)
@@ -172,6 +195,32 @@ def update_order_status(
         )
 
     order.status = status_in.status
+    db.commit()
+    db.refresh(order)
+    return order
+
+
+@router.post("/{order_id}/cancel", response_model=schemas.OrderResponse)
+def cancel_order(
+    order_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(oauth2.get_current_user),
+):
+    """El cliente cancela su pedido mientras la tienda no lo haya aceptado; el stock vuelve al inventario."""
+    order = get_order_or_404(order_id, db, lock=True)
+    if order.user_id != current_user.id:
+        raise HTTPException(status_code=404, detail=f"No existe el pedido con id {order_id}")
+    if order.status != models.OrderStatus.pendiente:
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                "Solo puedes cancelar un pedido mientras está pendiente. "
+                "Si ya fue aceptado, comunícate con la tienda."
+            ),
+        )
+
+    restock_order_items(order, db)
+    order.status = models.OrderStatus.cancelado
     db.commit()
     db.refresh(order)
     return order
