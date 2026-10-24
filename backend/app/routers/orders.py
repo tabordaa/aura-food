@@ -1,6 +1,6 @@
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 
 from .. import models, oauth2, schemas
 from ..database import get_db
@@ -21,12 +21,13 @@ def create_order(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(oauth2.get_current_user),
 ):
-    user_id = current_user.id
-    if not order_in.items:
-        raise HTTPException(status_code=400, detail="El pedido debe tener al menos un producto")
+    # Si el mismo producto viene repetido se suman las cantidades
+    quantities: dict[int, int] = {}
+    for item in order_in.items:
+        quantities[item.product_id] = quantities.get(item.product_id, 0) + item.quantity
 
     order = models.Order(
-        user_id=user_id,
+        user_id=current_user.id,
         delivery_address=order_in.delivery_address,
         phone=order_in.phone,
         notes=order_in.notes,
@@ -36,27 +37,31 @@ def create_order(
     )
 
     total = 0.0
-    for item in order_in.items:
-        if item.quantity <= 0:
-            raise HTTPException(
-                status_code=400, detail=f"La cantidad del producto {item.product_id} debe ser mayor a 0"
-            )
-
-        product = db.query(models.Product).filter(models.Product.id == item.product_id).first()
+    # Se bloquean las filas de los productos (SELECT ... FOR UPDATE) hasta el commit para que dos pedidos
+    # simultáneos no vendan el mismo stock. Se recorren por id para que todos bloqueen en el mismo orden
+    # y no se produzcan interbloqueos.
+    for product_id in sorted(quantities):
+        quantity = quantities[product_id]
+        product = (
+            db.query(models.Product)
+            .filter(models.Product.id == product_id)
+            .with_for_update()
+            .first()
+        )
         if not product:
-            raise HTTPException(status_code=404, detail=f"No existe el producto con id {item.product_id}")
-        if product.stock < item.quantity:
+            raise HTTPException(status_code=404, detail=f"No existe el producto con id {product_id}")
+        if product.stock < quantity:
             raise HTTPException(
                 status_code=400,
                 detail=f"Stock insuficiente para '{product.name}' (disponible: {product.stock})",
             )
 
         # El precio se toma de la base de datos, no del cliente, para que no lo puedan alterar
-        product.stock -= item.quantity
-        total += product.price * item.quantity
+        product.stock -= quantity
+        total += product.price * quantity
         order.items.append(models.OrderItem(
             product_id=product.id,
-            quantity=item.quantity,
+            quantity=quantity,
             price_at_purchase=product.price,
         ))
 
@@ -86,13 +91,16 @@ def get_order_or_404(order_id: int, db: Session) -> models.Order:
 @router.get("", response_model=list[schemas.OrderResponse])
 def list_orders(
     status_filter: models.OrderStatus | None = Query(None, alias="status", description="Filtrar por estado (opcional)"),
+    limit: int = Query(200, ge=1, le=500),
+    offset: int = Query(0, ge=0),
     db: Session = Depends(get_db),
     _: models.User = Depends(oauth2.require_roles(*STAFF_ROLES)),
 ):
-    query = db.query(models.Order)
+    # selectinload trae los items de todos los pedidos en una sola consulta extra (evita N+1)
+    query = db.query(models.Order).options(selectinload(models.Order.items))
     if status_filter:
         query = query.filter(models.Order.status == status_filter)
-    return query.order_by(models.Order.created_at.desc()).all()
+    return query.order_by(models.Order.created_at.desc(), models.Order.id.desc()).offset(offset).limit(limit).all()
 
 
 @router.get("/{order_id}", response_model=schemas.OrderResponse)

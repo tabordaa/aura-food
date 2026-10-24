@@ -8,8 +8,13 @@ const FIELD_MESSAGES = {
   name: 'El nombre debe tener entre 2 y 100 caracteres',
   email: 'El correo electrónico no es válido',
   password: 'La contraseña debe tener entre 8 y 72 caracteres',
-  phone: 'El teléfono es demasiado largo',
+  phone: 'El teléfono no es válido',
   address: 'La dirección es demasiado larga',
+  delivery_address: 'La dirección de entrega debe tener entre 5 y 200 caracteres',
+  notes: 'Las indicaciones no pueden superar 300 caracteres',
+  quantity: 'Cada producto admite entre 1 y 99 unidades',
+  items: 'El pedido debe tener entre 1 y 50 productos',
+  payment_method: 'Selecciona un método de pago válido',
 };
 
 export function getErrorMessage(detail, fallback = 'Error en la petición') {
