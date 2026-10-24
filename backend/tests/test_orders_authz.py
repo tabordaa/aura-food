@@ -88,3 +88,9 @@ def test_courier_delivers_prepared_order(client, db, order, courier_headers):
 
     assert response.status_code == 200
     assert response.json()["status"] == "entregado"
+
+
+def test_list_orders_supports_pagination(client, order, admin_headers):
+    assert client.get("/api/orders?limit=1&offset=0", headers=admin_headers).json()[0]["id"] == order.id
+    assert client.get("/api/orders?limit=1&offset=1", headers=admin_headers).json() == []
+    assert client.get("/api/orders?limit=1000", headers=admin_headers).status_code == 422

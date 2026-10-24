@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import Literal
 
 from pydantic import BaseModel, EmailStr, Field
 
@@ -57,7 +58,7 @@ class OrderItemBase(BaseModel):
     quantity: int
 
 class OrderItemCreate(OrderItemBase):
-    pass
+    quantity: int = Field(gt=0, le=99)
 
 class OrderItemResponse(OrderItemBase):
     id: int
@@ -73,7 +74,12 @@ class OrderBase(BaseModel):
     payment_method: str | None = None
 
 class OrderCreate(OrderBase):
-    items: list[OrderItemCreate]
+    # Restricciones solo en la entrada; OrderResponse hereda los tipos simples para no fallar con pedidos antiguos
+    delivery_address: str = Field(min_length=5, max_length=200)
+    phone: str | None = Field(default=None, pattern=r"^\+?[0-9 -]{7,20}$")
+    notes: str | None = Field(default=None, max_length=300)
+    payment_method: Literal["card", "cash"] | None = None
+    items: list[OrderItemCreate] = Field(min_length=1, max_length=50)
 
 class OrderStatusUpdate(BaseModel):
     status: OrderStatus
