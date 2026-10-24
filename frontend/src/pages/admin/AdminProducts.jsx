@@ -176,76 +176,78 @@ export default function AdminProducts() {
             ))}
           </div>
 
-          <table className={styles.table}>
-            <thead>
-              <tr>
-                <th>Producto</th>
-                <th>Categoría</th>
-                <th>Precio</th>
-                <th>Stock</th>
-                <th>Estado</th>
-                <th className={styles['col-actions']}>Acciones</th>
-              </tr>
-            </thead>
-            <tbody>
-              {loading && products.length === 0 ? (
-                <tr><td colSpan={6} className={styles.empty}>Cargando productos…</td></tr>
-              ) : visible.length === 0 ? (
+          <div className={styles['table-wrap']}>
+            <table className={styles.table}>
+              <thead>
                 <tr>
-                  <td colSpan={6} className={styles.empty}>
-                    {!online && products.length === 0
-                      ? '📡 No pudimos conectar con el backend. Revisa que esté corriendo en el puerto 8000.'
-                      : 'No hay productos que coincidan.'}
-                  </td>
+                  <th>Producto</th>
+                  <th>Categoría</th>
+                  <th>Precio</th>
+                  <th>Stock</th>
+                  <th>Estado</th>
+                  <th className={styles['col-actions']}>Acciones</th>
                 </tr>
-              ) : visible.map(product => {
-                const busy = busyId === product.id;
-                return (
-                  <tr key={product.id} className={[busy ? styles.busy : '', product.is_active ? '' : styles.inactive].join(' ')}>
-                    <td>
-                      <div className={styles['product-cell']}>
-                        <span className={styles['product-thumb']}>
-                          {product.image_url ? <img src={product.image_url} alt="" /> : '🛒'}
-                        </span>
-                        <div>
-                          <strong>{product.name}</strong>
-                          <small className={styles.muted}>{[product.unit, product.tag].filter(Boolean).join(' • ') || '—'}</small>
-                        </div>
-                      </div>
-                    </td>
-                    <td>{categoryLabel(product.category)}</td>
-                    <td className={styles.total}>
-                      {product.old_price && <s className={styles['price-old']}>{formatPrice(product.old_price)}</s>}
-                      {formatPrice(product.price)}
-                    </td>
-                    <td><StockBadge stock={product.stock} /></td>
-                    <td>
-                      <span className={[styles.status, styles[product.is_active ? 'status-done' : 'status-rejected']].join(' ')}>
-                        {product.is_active ? <IconCheck size={12} /> : <span className={styles['status-dot']} />}
-                        {product.is_active ? 'Activo' : 'Inactivo'}
-                      </span>
-                    </td>
-                    <td className={styles['col-actions']}>
-                      {confirmId === product.id ? (
-                        <div className={styles.confirm}>
-                          <span>¿Ocultar del catálogo?</span>
-                          <button type="button" className={styles['btn-danger']} onClick={() => setActive(product, false)} disabled={busy}>Sí</button>
-                          <button type="button" className={styles['btn-ghost']} onClick={() => setConfirmId(null)} disabled={busy}>No</button>
-                        </div>
-                      ) : (
-                        <div className={styles.actions}>
-                          <button type="button" className={styles['btn-ghost']} onClick={() => setEditing(product)} disabled={busy}>Editar</button>
-                          {product.is_active
-                            ? <button type="button" className={styles['btn-reject']} onClick={() => setConfirmId(product.id)} disabled={busy}>Desactivar</button>
-                            : <button type="button" className={styles['btn-accept']} onClick={() => setActive(product, true)} disabled={busy}>Activar</button>}
-                        </div>
-                      )}
+              </thead>
+              <tbody>
+                {loading && products.length === 0 ? (
+                  <tr><td colSpan={6} className={styles.empty}>Cargando productos…</td></tr>
+                ) : visible.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className={styles.empty}>
+                      {!online && products.length === 0
+                        ? '📡 No pudimos conectar con el backend. Revisa que esté corriendo en el puerto 8000.'
+                        : 'No hay productos que coincidan.'}
                     </td>
                   </tr>
-                );
-              })}
-            </tbody>
-          </table>
+                ) : visible.map(product => {
+                  const busy = busyId === product.id;
+                  return (
+                    <tr key={product.id} className={[busy ? styles.busy : '', product.is_active ? '' : styles.inactive].join(' ')}>
+                      <td>
+                        <div className={styles['product-cell']}>
+                          <span className={styles['product-thumb']}>
+                            {product.image_url ? <img src={product.image_url} alt="" /> : '🛒'}
+                          </span>
+                          <div>
+                            <strong>{product.name}</strong>
+                            <small className={styles.muted}>{[product.unit, product.tag].filter(Boolean).join(' • ') || '—'}</small>
+                          </div>
+                        </div>
+                      </td>
+                      <td>{categoryLabel(product.category)}</td>
+                      <td className={styles.total}>
+                        {product.old_price && <s className={styles['price-old']}>{formatPrice(product.old_price)}</s>}
+                        {formatPrice(product.price)}
+                      </td>
+                      <td><StockBadge stock={product.stock} /></td>
+                      <td>
+                        <span className={[styles.status, styles[product.is_active ? 'status-done' : 'status-rejected']].join(' ')}>
+                          {product.is_active ? <IconCheck size={12} /> : <span className={styles['status-dot']} />}
+                          {product.is_active ? 'Activo' : 'Inactivo'}
+                        </span>
+                      </td>
+                      <td className={styles['col-actions']}>
+                        {confirmId === product.id ? (
+                          <div className={styles.confirm}>
+                            <span>¿Ocultar del catálogo?</span>
+                            <button type="button" className={styles['btn-danger']} onClick={() => setActive(product, false)} disabled={busy}>Sí</button>
+                            <button type="button" className={styles['btn-ghost']} onClick={() => setConfirmId(null)} disabled={busy}>No</button>
+                          </div>
+                        ) : (
+                          <div className={styles.actions}>
+                            <button type="button" className={styles['btn-ghost']} onClick={() => setEditing(product)} disabled={busy}>Editar</button>
+                            {product.is_active
+                              ? <button type="button" className={styles['btn-reject']} onClick={() => setConfirmId(product.id)} disabled={busy}>Desactivar</button>
+                              : <button type="button" className={styles['btn-accept']} onClick={() => setActive(product, true)} disabled={busy}>Activar</button>}
+                          </div>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         </section>
       </div>
 

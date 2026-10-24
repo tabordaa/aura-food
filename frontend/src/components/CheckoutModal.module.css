@@ -269,6 +269,21 @@
 }
 .hint strong { color: var(--text-secondary); }
 
+.item-img {
+  width: 32px;
+  height: 32px;
+  object-fit: cover;
+  border-radius: var(--radius-sm);
+  display: block;
+}
+.item-img-placeholder {
+  background: #f0f0f0;
+  color: #ccc;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 .save-check {
   display: flex;
   align-items: center;

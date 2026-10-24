@@ -218,105 +218,107 @@ export default function AdminDashboard() {
               ))}
             </div>
 
-            <table className={styles.table}>
-              <thead>
-                <tr>
-                  <th>Pedido</th>
-                  <th>Cliente</th>
-                  <th>Dirección de entrega</th>
-                  <th>Productos</th>
-                  <th>Total</th>
-                  <th>Estado</th>
-                  <th className={styles['col-actions']}>Acciones</th>
-                </tr>
-              </thead>
-              <tbody>
-                {loading && orders.length === 0 ? (
-                  <tr><td colSpan={7} className={styles.empty}>Cargando pedidos…</td></tr>
-                ) : pageOrders.length === 0 ? (
+            <div className={styles['table-wrap']}>
+              <table className={styles.table}>
+                <thead>
                   <tr>
-                    <td colSpan={7} className={styles.empty}>
-                      {!online && orders.length === 0
-                        ? '📡 No pudimos conectar con el backend. Revisa que esté corriendo en el puerto 8000.'
-                        : tab === 'pendiente' && !term ? '🎉 No hay pedidos pendientes por ahora.' : 'No hay pedidos que coincidan.'}
-                    </td>
+                    <th>Pedido</th>
+                    <th>Cliente</th>
+                    <th>Productos</th>
+                    <th>Total</th>
+                    <th>Estado</th>
+                    <th className={styles['col-actions']}>Acciones</th>
                   </tr>
-                ) : pageOrders.map(order => {
-                  const meta = STATUS_META[order.status] ?? { label: order.status, tone: 'progress' };
-                  const created = parseServerDate(order.created_at);
-                  const { names, units } = describeItems(order.items);
-                  const busy = busyId === order.id;
-                  return (
-                    <tr key={order.id} className={busy ? styles.busy : ''}>
-                      <td>
-                        <div className={styles['order-id']}>
-                          <span className={[styles.dot, styles[`dot-${meta.tone}`]].join(' ')} />
-                          <strong>{formatOrderId(order.id)}</strong>
-                        </div>
-                        <small className={styles.muted}>{timeAgo(created, now)}</small>
-                      </td>
-                      <td>
-                        <div className={styles.client}>
-                          <span className={styles['client-avatar']}>{initials(order.customer?.name)}</span>
-                          <span>{order.customer?.name ?? `Cliente #${order.user_id}`}</span>
-                        </div>
-                      </td>
-                      <td>
-                        <div className={styles.address}>
-                          <IconMapPin size={15} />
-                          <span>{order.delivery_address}</span>
-                        </div>
-                      </td>
-                      <td>
-                        <p className={styles.products} title={names}>{names}</p>
-                        <span className={styles['items-chip']}>{units} unidad{units !== 1 ? 'es' : ''}</span>
-                      </td>
-                      <td className={styles.total}>{formatPrice(order.total_price)}</td>
-                      <td>
-                        <span className={[styles.status, styles[`status-${meta.tone}`]].join(' ')}>
-                          {meta.tone === 'done' ? <IconCheck size={12} /> : <span className={styles['status-dot']} />}
-                          {meta.label}
-                        </span>
-                      </td>
-                      <td className={styles['col-actions']}>
-                        {order.status !== 'pendiente' ? (
-                          <span className={styles.muted}>{courierNote(order)}</span>
-                        ) : confirmRejectId === order.id ? (
-                          <form
-                            className={styles.confirm}
-                            onSubmit={e => { e.preventDefault(); if (rejectReason.trim().length >= 3) changeStatus(order, 'rechazado'); }}
-                          >
-                            <input
-                              className={styles['reason-input']}
-                              placeholder="Motivo (lo verá el cliente)"
-                              aria-label="Motivo del rechazo"
-                              value={rejectReason}
-                              onChange={e => setRejectReason(e.target.value)}
-                              maxLength={300}
-                              disabled={busy}
-                              autoFocus
-                            />
-                            <button type="submit" className={styles['btn-danger']} disabled={busy || rejectReason.trim().length < 3}>
-                              {busy ? '…' : 'Rechazar'}
-                            </button>
-                            <button type="button" className={styles['btn-ghost']} onClick={() => setConfirmRejectId(null)} disabled={busy}>No</button>
-                          </form>
-                        ) : (
-                          <div className={styles.actions}>
-                            <button type="button" className={styles['btn-accept']} onClick={() => changeStatus(order, 'preparado')} disabled={busy}>
-                              {busy ? '…' : <><IconCheck size={13} /> Aceptar</>}
-                            </button>
-                            <button type="button" className={styles['btn-reject']} onClick={() => openReject(order.id)} disabled={busy}>
-                              ✕ Rechazar
-                            </button>
-                          </div>
-                        )}
+                </thead>
+                <tbody>
+                  {loading && orders.length === 0 ? (
+                    <tr><td colSpan={6} className={styles.empty}>Cargando pedidos…</td></tr>
+                  ) : pageOrders.length === 0 ? (
+                    <tr>
+                      <td colSpan={6} className={styles.empty}>
+                        {!online && orders.length === 0
+                          ? '📡 No pudimos conectar con el backend. Revisa que esté corriendo en el puerto 8000.'
+                          : tab === 'pendiente' && !term ? '🎉 No hay pedidos pendientes por ahora.' : 'No hay pedidos que coincidan.'}
                       </td>
                     </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+                  ) : pageOrders.map(order => {
+                    const meta = STATUS_META[order.status] ?? { label: order.status, tone: 'progress' };
+                    const created = parseServerDate(order.created_at);
+                    const { names, units } = describeItems(order.items);
+                    const busy = busyId === order.id;
+                    return (
+                      <tr key={order.id} className={busy ? styles.busy : ''}>
+                        <td>
+                          <div className={styles['order-id']}>
+                            <span className={[styles.dot, styles[`dot-${meta.tone}`]].join(' ')} />
+                            <strong>{formatOrderId(order.id)}</strong>
+                          </div>
+                          <small className={styles.muted}>{timeAgo(created, now)}</small>
+                        </td>
+                        <td>
+                          {/* La dirección va debajo del cliente para que la tabla quepa sin scroll en portátiles */}
+                          <div className={styles.client}>
+                            <span className={styles['client-avatar']}>{initials(order.customer?.name)}</span>
+                            <div>
+                              <strong>{order.customer?.name ?? `Cliente #${order.user_id}`}</strong>
+                              <div className={[styles.address, styles.muted].join(' ')}>
+                                <IconMapPin size={13} />
+                                <span>{order.delivery_address}</span>
+                              </div>
+                            </div>
+                          </div>
+                        </td>
+                        <td>
+                          <p className={styles.products} title={names}>{names}</p>
+                          <span className={styles['items-chip']}>{units} unidad{units !== 1 ? 'es' : ''}</span>
+                        </td>
+                        <td className={styles.total}>{formatPrice(order.total_price)}</td>
+                        <td>
+                          <span className={[styles.status, styles[`status-${meta.tone}`]].join(' ')}>
+                            {meta.tone === 'done' ? <IconCheck size={12} /> : <span className={styles['status-dot']} />}
+                            {meta.label}
+                          </span>
+                        </td>
+                        <td className={styles['col-actions']}>
+                          {order.status !== 'pendiente' ? (
+                            <span className={styles.muted}>{courierNote(order)}</span>
+                          ) : confirmRejectId === order.id ? (
+                            <form
+                              className={styles.confirm}
+                              onSubmit={e => { e.preventDefault(); if (rejectReason.trim().length >= 3) changeStatus(order, 'rechazado'); }}
+                            >
+                              <input
+                                className={styles['reason-input']}
+                                placeholder="Motivo (lo verá el cliente)"
+                                aria-label="Motivo del rechazo"
+                                value={rejectReason}
+                                onChange={e => setRejectReason(e.target.value)}
+                                maxLength={300}
+                                disabled={busy}
+                                autoFocus
+                              />
+                              <button type="submit" className={styles['btn-danger']} disabled={busy || rejectReason.trim().length < 3}>
+                                {busy ? '…' : 'Rechazar'}
+                              </button>
+                              <button type="button" className={styles['btn-ghost']} onClick={() => setConfirmRejectId(null)} disabled={busy}>No</button>
+                            </form>
+                          ) : (
+                            <div className={styles.actions}>
+                              <button type="button" className={styles['btn-accept']} onClick={() => changeStatus(order, 'preparado')} disabled={busy}>
+                                {busy ? '…' : <><IconCheck size={13} /> Aceptar</>}
+                              </button>
+                              <button type="button" className={styles['btn-reject']} onClick={() => openReject(order.id)} disabled={busy}>
+                                ✕ Rechazar
+                              </button>
+                            </div>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
 
             <div className={styles.pagination}>
               <span>

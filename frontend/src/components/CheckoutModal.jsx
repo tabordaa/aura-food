@@ -118,7 +118,7 @@ export default function CheckoutModal({
         await new Promise(resolve => setTimeout(resolve, CARD_PROCESSING_MS));
       }
       setStage('sending');
-      
+
       const resData = await orderService.createOrder({
         delivery_address: address,
         phone: delivery.phone,
@@ -419,9 +419,9 @@ export default function CheckoutModal({
                     <div key={item.id} className={styles.item}>
                       <div className={styles['item-image']}>
                         {item.image_url ? (
-                          <img src={item.image_url} alt={item.name} style={{ width: '32px', height: '32px', objectFit: 'cover', borderRadius: '4px' }} />
+                          <img src={item.image_url} alt={item.name} className={styles['item-img']} />
                         ) : (
-                          <div style={{ width: '32px', height: '32px', background: '#f0f0f0', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ccc' }}>
+                          <div className={[styles['item-img'], styles['item-img-placeholder']].join(' ')}>
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 19V5a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v14M8 10l2-2 4 4 2-2"/></svg>
                           </div>
                         )}

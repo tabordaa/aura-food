@@ -277,6 +277,7 @@
   gap: 8px;
 }
 .tab-btn {
+  white-space: nowrap;
   padding: 7px 16px;
   border-radius: var(--radius-xl);
   font-size: 0.85rem;
@@ -855,4 +856,66 @@
   border-top-color: var(--primary);
   border-radius: 50%;
   animation: catalog-spin 0.8s linear infinite;
+}
+
+/* =========================================
+   RESPONSIVE (tablet 860px · móvil 640px)
+   ========================================= */
+@media (max-width: 1180px) {
+  .product-grid { grid-template-columns: repeat(3, 1fr); }
+}
+
+@media (max-width: 860px) {
+  /* Las categorías pasan de barra lateral a una fila deslizable sobre el catálogo */
+  .catalog-body { flex-direction: column; }
+  .sidebar {
+    width: auto;
+    height: auto;
+    position: sticky;
+    top: var(--navbar-h);
+    z-index: 50;
+    display: flex;
+    gap: 6px;
+    padding: 10px 16px;
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+    overflow-x: auto;
+    overflow-y: hidden;
+  }
+  .sidebar-title { display: none; }
+  .sidebar-item {
+    flex-shrink: 0;
+    padding: 7px 14px;
+    border-left: none;
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius-xl);
+    font-size: 0.85rem;
+    white-space: nowrap;
+  }
+  .sidebar-item.active { border-color: var(--primary); }
+  .catalog-main { padding: 20px 16px 32px; overflow: visible; }
+  .section-header { flex-direction: column; align-items: stretch; gap: 12px; }
+  .filter-tabs { overflow-x: auto; flex-wrap: nowrap; padding-bottom: 2px; }
+  .tab-btn { flex-shrink: 0; white-space: nowrap; }
+  .product-grid { grid-template-columns: repeat(3, 1fr); gap: 12px; }
+  .banner-right { font-size: 3.2rem; }
+}
+
+@media (max-width: 640px) {
+  .navbar { flex-wrap: wrap; height: auto; padding: 10px 16px; gap: 10px 12px; }
+  .navbar-search { order: 3; flex-basis: 100%; max-width: none; }
+  .orders-btn span, .user-name { display: none; }
+  .navbar-actions { gap: 6px; }
+  .sidebar { top: 0; position: static; }
+  .welcome-banner { padding: 22px 20px; margin-bottom: 22px; }
+  .banner-left h1 { font-size: 1.35rem; }
+  .banner-meta { flex-wrap: wrap; gap: 8px 14px; }
+  .banner-right { display: none; }
+  .product-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .card-image-area { padding: 18px 10px 10px; min-height: 0; }
+  .card-body { padding-left: 10px; padding-right: 10px; }
+  .card-footer { flex-direction: column; align-items: stretch; gap: 8px; padding: 0 10px 10px; }
+  .btn-add { justify-content: center; }
+  .cta-banner { flex-direction: column; gap: 14px; text-align: center; }
+  .cta-banner-left { flex-direction: column; }
 }

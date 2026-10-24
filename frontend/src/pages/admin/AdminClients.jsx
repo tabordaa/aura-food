@@ -120,58 +120,60 @@ export default function AdminClients() {
             ))}
           </div>
 
-          <table className={styles.table}>
-            <thead>
-              <tr>
-                <th>Cliente</th>
-                <th>Contacto</th>
-                <th>Pedidos</th>
-                <th>Total gastado</th>
-                <th>Último pedido</th>
-                <th>Cliente desde</th>
-              </tr>
-            </thead>
-            <tbody>
-              {loading && clients.length === 0 ? (
-                <tr><td colSpan={6} className={styles.empty}>Cargando clientes…</td></tr>
-              ) : visible.length === 0 ? (
+          <div className={styles['table-wrap']}>
+            <table className={styles.table}>
+              <thead>
                 <tr>
-                  <td colSpan={6} className={styles.empty}>
-                    {!online && clients.length === 0
-                      ? '📡 No pudimos conectar con el backend. Revisa que esté corriendo en el puerto 8000.'
-                      : 'No hay clientes que coincidan.'}
-                  </td>
+                  <th>Cliente</th>
+                  <th>Contacto</th>
+                  <th>Pedidos</th>
+                  <th>Total gastado</th>
+                  <th>Último pedido</th>
+                  <th>Cliente desde</th>
                 </tr>
-              ) : visible.map(c => (
-                <tr key={c.id}>
-                  <td>
-                    <div className={styles.client}>
-                      <span className={styles['client-avatar']}>{initials(c.name)}</span>
-                      <div>
-                        <strong>{c.name}</strong>
-                        <small className={styles.muted}>{c.email}</small>
+              </thead>
+              <tbody>
+                {loading && clients.length === 0 ? (
+                  <tr><td colSpan={6} className={styles.empty}>Cargando clientes…</td></tr>
+                ) : visible.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className={styles.empty}>
+                      {!online && clients.length === 0
+                        ? '📡 No pudimos conectar con el backend. Revisa que esté corriendo en el puerto 8000.'
+                        : 'No hay clientes que coincidan.'}
+                    </td>
+                  </tr>
+                ) : visible.map(c => (
+                  <tr key={c.id}>
+                    <td>
+                      <div className={styles.client}>
+                        <span className={styles['client-avatar']}>{initials(c.name)}</span>
+                        <div>
+                          <strong>{c.name}</strong>
+                          <small className={styles.muted}>{c.email}</small>
+                        </div>
                       </div>
-                    </div>
-                  </td>
-                  <td>
-                    <span>{c.phone || '—'}</span>
-                    {c.address && (
-                      <div className={[styles.address, styles.muted].join(' ')}>
-                        <IconMapPin size={13} />
-                        <small>{c.address}</small>
-                      </div>
-                    )}
-                  </td>
-                  <td>
-                    <span className={styles['items-chip']}>{c.orders_count} pedido{c.orders_count !== 1 ? 's' : ''}</span>
-                  </td>
-                  <td className={styles.total}>{formatPrice(c.total_spent)}</td>
-                  <td>{formatDate(c.last_order_at)}</td>
-                  <td className={styles.muted}>{formatDate(c.created_at)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                    </td>
+                    <td>
+                      <span>{c.phone || '—'}</span>
+                      {c.address && (
+                        <div className={[styles.address, styles.muted].join(' ')}>
+                          <IconMapPin size={13} />
+                          <small>{c.address}</small>
+                        </div>
+                      )}
+                    </td>
+                    <td>
+                      <span className={styles['items-chip']}>{c.orders_count} pedido{c.orders_count !== 1 ? 's' : ''}</span>
+                    </td>
+                    <td className={styles.total}>{formatPrice(c.total_spent)}</td>
+                    <td>{formatDate(c.last_order_at)}</td>
+                    <td className={styles.muted}>{formatDate(c.created_at)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </section>
       </div>
     </AdminLayout>

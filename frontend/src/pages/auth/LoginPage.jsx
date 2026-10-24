@@ -43,7 +43,7 @@ export default function LoginPage() {
       <div className={styles['auth-body']}>
         <div className={styles['auth-card']}>
           <div className={styles['card-brand']}>
-            <div className={styles['brand']} style={{ fontSize: '1.4rem' }}>
+            <div className={[styles.brand, styles['brand-lg']].join(' ')}>
               <IconCart size={26} />
               {import.meta.env.VITE_APP_NAME || 'Aura Food'}
             </div>
@@ -51,9 +51,9 @@ export default function LoginPage() {
           </div>
 
           <form onSubmit={handleSubmit}>
-            {error && <div style={{ color: 'red', marginBottom: '1rem', fontSize: '0.875rem' }}>{error}</div>}
+            {error && <div className={styles['form-error']} role="alert">{error}</div>}
             {!error && sessionExpired && (
-              <div style={{ color: 'var(--text-secondary)', marginBottom: '1rem', fontSize: '0.875rem' }}>
+              <div className={styles['form-notice']} role="status">
                 Tu sesión expiró. Inicia sesión de nuevo para continuar.
               </div>
             )}
