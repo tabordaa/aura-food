@@ -12,5 +12,8 @@ def verify_password(plain_password: str, hashed_password: str):
         # Hash corrupto o en un formato desconocido: se trata como contraseña incorrecta, no como error 500
         return False
 
+def is_valid_hash(hashed_password: str | None) -> bool:
+    return bool(hashed_password) and pwd_context.identify(hashed_password, required=False) is not None
+
 # Hash de referencia para gastar el mismo tiempo cuando el email no existe y no revelar qué cuentas existen
 DUMMY_HASH = hash_password("aura-food-dummy-password")
