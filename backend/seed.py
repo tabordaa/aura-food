@@ -3,7 +3,7 @@
 Es idempotente: se puede ejecutar varias veces sin duplicar datos ni pisar contraseñas existentes.
 Las contraseñas se leen de variables de entorno (ver .env.example); si falta una, ese usuario no se crea.
 
-Uso: python seed.py
+Uso (con el esquema al día): alembic upgrade head && python seed.py
 """
 import os
 import sys
@@ -12,7 +12,7 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from app import models, utils
-from app.database import SessionLocal, engine
+from app.database import SessionLocal
 
 USERS = [
     {
@@ -111,7 +111,6 @@ def seed(db: Session) -> None:
 
 
 def main() -> int:
-    models.Base.metadata.create_all(bind=engine)
     db = SessionLocal()
     try:
         seed(db)
