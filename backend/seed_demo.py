@@ -4,7 +4,8 @@ Es idempotente y solo toca registros de demo:
 - Productos: se buscan por nombre. Si existen se actualizan sus datos (nunca el stock); si no, se crean.
 - Clientes: correos @demo.aurafood.com. Se crean solo si está definida SEED_DEMO_PASSWORD y nunca se cambia la
   contraseña de uno existente.
-- Pedidos: solo se crean para clientes demo que todavía no tienen pedidos.
+- Pedidos: solo se crean para clientes demo que todavía no tienen pedidos. A los pedidos demo sin ubicación en el
+  mapa se les completa la de la dirección del cliente.
 
 Uso (después de seed.py): python seed_demo.py
 """
@@ -58,11 +59,11 @@ BASE_PRODUCT_IMAGES = {
 
 DEMO_CUSTOMERS = [
     {"email": "ana.gomez@demo.aurafood.com", "name": "Ana Gómez", "address": "Calle 85 # 11-42, Apto 502, Bogotá",
-     "phone": "3104567890", "joined_days_ago": 45},
+     "phone": "3104567890", "joined_days_ago": 45, "location": (4.668150, -74.051320)},
     {"email": "carlos.rios@demo.aurafood.com", "name": "Carlos Ríos", "address": "Carrera 7 # 72-13, Bogotá",
-     "phone": "3157894561", "joined_days_ago": 30},
+     "phone": "3157894561", "joined_days_ago": 30, "location": (4.656820, -74.056410)},
     {"email": "valentina.mora@demo.aurafood.com", "name": "Valentina Mora", "address": "Avenida 19 # 104-37, Bogotá",
-     "phone": "3209876543", "joined_days_ago": 12},
+     "phone": "3209876543", "joined_days_ago": 12, "location": (4.690806, -74.051540)},
 ]
 
 S = models.OrderStatus
@@ -139,15 +140,21 @@ def seed_orders(db: Session, customers: list[models.User], products: dict[str, m
     courier = db.query(models.User).filter(models.User.role == models.RoleEnum.domiciliario).order_by(models.User.id).first()
     fee = settings.get_delivery_fee()
     now = models.utc_now()
+    locations = {c["email"]: c["location"] for c in DEMO_CUSTOMERS}
     created = 0
     for customer in customers:
-        if db.query(models.Order).filter(models.Order.user_id == customer.id).count():
+        lat, lng = locations[customer.email]
+        existing = db.query(models.Order).filter(models.Order.user_id == customer.id).all()
+        if existing:
+            for order in existing:
+                if order.delivery_lat is None and order.delivery_address == customer.address:
+                    order.delivery_lat, order.delivery_lng = lat, lng
             continue
         for status, hours_ago, items, payment, note in DEMO_ORDERS.get(customer.email, []):
             created_at = now - timedelta(hours=hours_ago)
             order = models.Order(
                 user_id=customer.id, status=status, delivery_address=customer.address, phone=customer.phone,
-                payment_method=payment, created_at=created_at, delivery_fee=fee,
+                payment_method=payment, created_at=created_at, delivery_fee=fee, delivery_lat=lat, delivery_lng=lng,
                 notes=None if status == S.rechazado else note,
                 rejection_reason=note if status == S.rechazado else None,
             )

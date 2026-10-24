@@ -1,6 +1,9 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useAuth } from '../../hooks/useAuth';
 import { IconCheck, IconMapPin, IconPhone, IconTruck } from '../../components/Icons';
+import { OrderMap } from '../../components/maps/LazyMaps';
+import { directionsUrl, toLocation } from '../../utils/location';
+import { useStoreConfig } from '../../hooks/useStoreConfig';
 import { orderService } from '../../services/order.service';
 import { formatOrderId, formatPrice, parseServerDate } from '../../utils/format';
 import styles from './Delivery.module.css';
@@ -31,9 +34,10 @@ function formatDeliveredAt(value) {
   return parseServerDate(value).toLocaleString('es-CO', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' });
 }
 
-function OrderCard({ order, mode, isUpdating, onAction }) {
+function OrderCard({ order, mode, store, isUpdating, onAction }) {
   const itemCount = order.items.reduce((total, item) => total + item.quantity, 0);
   const cash = order.payment_method === 'cash';
+  const location = toLocation(order);
 
   return (
     <article className={styles['order-card']}>
@@ -54,7 +58,7 @@ function OrderCard({ order, mode, isUpdating, onAction }) {
           </span>
           <div>
             <span className={styles['route-label']}>Recoger en</span>
-            <p>{PICKUP_ADDRESS}</p>
+            <p>{store?.address || PICKUP_ADDRESS}</p>
           </div>
         </div>
         <div className={styles['route-line']} />
@@ -68,6 +72,15 @@ function OrderCard({ order, mode, isUpdating, onAction }) {
           </div>
         </div>
       </div>
+
+      {mode === 'active' && location && (
+        <div className={styles['order-map']}>
+          <OrderMap store={store} destination={location} height={180} />
+          <a className={styles['directions-link']} href={directionsUrl(location)} target="_blank" rel="noreferrer">
+            <IconMapPin size={14} /> Cómo llegar (Google Maps)
+          </a>
+        </div>
+      )}
 
       {mode === 'active' && (order.phone || order.notes) && (
         <div className={styles['order-extra']}>
@@ -117,6 +130,7 @@ export default function DeliveryPage() {
   const [updatingOrderId, setUpdatingOrderId] = useState(null);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
+  const store = useStoreConfig()?.store;
 
   const loadOrders = useCallback(() => orderService.getCourierOrders()
     .then(data => { setGroups(data); setError(''); })
@@ -223,6 +237,7 @@ export default function DeliveryPage() {
                 key={order.id}
                 order={order}
                 mode={tab}
+                store={store}
                 isUpdating={updatingOrderId === order.id}
                 onAction={handleAction}
               />
