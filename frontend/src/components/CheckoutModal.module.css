@@ -284,6 +284,24 @@
   justify-content: center;
 }
 
+.map-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 10px 14px;
+  border: 1.5px dashed var(--input-border);
+  border-radius: var(--radius-sm);
+  background: var(--input-bg);
+  color: var(--primary);
+  font-size: 0.84rem;
+  font-weight: 600;
+  text-align: left;
+  transition: border-color var(--transition), background var(--transition);
+}
+.map-toggle:hover:not(:disabled) { border-color: var(--primary); background: #fff; }
+.map-toggle em { font-style: normal; font-weight: 400; color: var(--text-muted); }
+
 .save-check {
   display: flex;
   align-items: center;

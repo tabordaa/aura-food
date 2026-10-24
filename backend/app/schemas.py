@@ -155,6 +155,15 @@ class OrderCreate(OrderBase):
     notes: str | None = Field(default=None, max_length=300)
     payment_method: Literal["card", "cash"] | None = None
     items: list[OrderItemCreate] = Field(min_length=1, max_length=50)
+    delivery_lat: float | None = Field(default=None, ge=-90, le=90)
+    delivery_lng: float | None = Field(default=None, ge=-180, le=180)
+
+    @model_validator(mode="after")
+    def location_complete(self):
+        # La ubicación es opcional, pero si viene debe traer ambas coordenadas
+        if (self.delivery_lat is None) != (self.delivery_lng is None):
+            raise ValueError("La ubicación de entrega debe tener latitud y longitud")
+        return self
 
 class OrderStatusUpdate(BaseModel):
     status: OrderStatus
@@ -184,6 +193,8 @@ class OrderResponse(OrderBase):
     delivery_fee: float = 0
     status: OrderStatus
     rejection_reason: str | None = None
+    delivery_lat: float | None = None
+    delivery_lng: float | None = None
     customer: UserSummary | None = None
     courier: UserSummary | None = None
     created_at: datetime

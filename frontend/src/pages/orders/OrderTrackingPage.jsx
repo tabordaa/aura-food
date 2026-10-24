@@ -1,11 +1,14 @@
 import { useState } from 'react';
 import { Link, useParams } from 'react-router';
 import { IconMapPin, IconPhone, IconCheck } from '../../components/Icons';
+import { OrderMap } from '../../components/maps/LazyMaps';
 import useOrderStatus from '../../hooks/useOrderStatus';
+import { useStoreConfig } from '../../hooks/useStoreConfig';
 import { orderService } from '../../services/order.service';
 import {
   CLOSED_STATUSES, ORDER_STEPS, DELIVERY_MINUTES, PAYMENT_LABELS, stepIndex, formatPrice, formatOrderId, parseServerDate,
 } from '../../utils/orders';
+import { toLocation } from '../../utils/location';
 import OrdersTopbar from './OrdersTopbar';
 import styles from './Orders.module.css';
 
@@ -22,6 +25,7 @@ export default function OrderTrackingPage() {
   const [confirmCancel, setConfirmCancel] = useState(false);
   const [cancelling, setCancelling] = useState(false);
   const [actionError, setActionError] = useState('');
+  const store = useStoreConfig()?.store;
 
   async function cancelOrder() {
     setCancelling(true);
@@ -117,6 +121,14 @@ export default function OrderTrackingPage() {
                 </li>
               ))}
             </ol>
+          </section>
+        )}
+
+        {/* Mapa: solo si el cliente marcó el punto de entrega y el pedido sigue activo */}
+        {toLocation(order) && !finished && (
+          <section className={styles.panel}>
+            <h3>{order.status === 'asignado' ? 'Tu pedido va en camino a este punto' : 'Punto de entrega'}</h3>
+            <OrderMap store={store} destination={toLocation(order)} />
           </section>
         )}
 

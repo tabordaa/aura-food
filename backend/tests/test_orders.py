@@ -90,4 +90,31 @@ def test_delivery_fee_is_configurable(client, customer_headers, products, monkey
 def test_public_config_exposes_delivery_values(client, monkeypatch):
     monkeypatch.setenv("DELIVERY_FEE", "6000")
 
-    assert client.get("/api/config").json() == {"delivery_fee": 6000, "delivery_minutes": 45}
+    body = client.get("/api/config").json()
+    assert body["delivery_fee"] == 6000
+    assert body["delivery_minutes"] == 45
+    assert set(body["store"]) == {"lat", "lng", "address"}
+
+
+def test_create_order_saves_delivery_location(client, customer_headers, products):
+    payload = {**_order_payload(products), "delivery_lat": 4.669712, "delivery_lng": -74.053021}
+
+    body = client.post("/api/orders", json=payload, headers=customer_headers).json()
+
+    assert body["delivery_lat"] == pytest.approx(4.669712)
+    assert body["delivery_lng"] == pytest.approx(-74.053021)
+
+
+def test_create_order_without_location_is_allowed(client, customer_headers, products):
+    body = client.post("/api/orders", json=_order_payload(products), headers=customer_headers).json()
+
+    assert body["delivery_lat"] is None and body["delivery_lng"] is None
+
+
+@pytest.mark.parametrize(
+    "location", [{"delivery_lat": 4.6}, {"delivery_lng": -74.0}, {"delivery_lat": 95, "delivery_lng": 0}]
+)
+def test_create_order_rejects_invalid_location(client, customer_headers, products, location):
+    response = client.post("/api/orders", json={**_order_payload(products), **location}, headers=customer_headers)
+
+    assert response.status_code == 422
