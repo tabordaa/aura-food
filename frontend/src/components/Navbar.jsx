@@ -1,9 +1,10 @@
 import { useAuth } from '../hooks/useAuth';
-import { IconCart, IconSearch, IconTruck, IconUser } from './Icons';
+import { IconCart, IconSearch, IconTruck } from './Icons';
+import { initials } from '../utils/format';
 import styles from '../pages/catalog/Catalog.module.css';
 
 export default function Navbar({ search, setSearch, cartCount, setCartOpen, navigate }) {
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
 
   return (
     <nav className={styles['navbar']}>
@@ -27,8 +28,8 @@ export default function Navbar({ search, setSearch, cartCount, setCartOpen, navi
           <IconCart size={22} />
           {cartCount > 0 && <span className={styles['cart-badge']}>{cartCount}</span>}
         </button>
-        <button className={styles['user-btn']} onClick={logout} title="Cerrar sesión">
-          <div className={styles['user-avatar']}><IconUser size={14} /></div>
+        <button className={styles['user-btn']} onClick={() => navigate('/perfil')} title="Mi perfil">
+          <div className={styles['user-avatar']}>{initials(user?.name)}</div>
           {user?.name || 'Invitado'}
         </button>
       </div>

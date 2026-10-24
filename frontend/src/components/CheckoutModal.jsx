@@ -4,6 +4,7 @@ import { IconMapPin, IconLock, IconShield, IconCheck, IconArrowRight, IconPhone,
 import PaymentCardForm from './PaymentCardForm';
 import { BRAND_LABELS, detectBrand, onlyDigits, validateCard } from './cardUtils';
 import { formatOrderId, formatPrice } from '../utils/format';
+import { useAuth } from '../hooks/useAuth';
 import { orderService } from '../services/order.service';
 import styles from './CheckoutModal.module.css';
 
@@ -44,7 +45,14 @@ export default function CheckoutModal({
   onOrderPlaced,
 }) {
   const navigate = useNavigate();
-  const [delivery, setDelivery] = useState(EMPTY_DELIVERY);
+  const { user, updateProfile } = useAuth();
+  // Se precargan la dirección y el celular guardados en el perfil
+  const [delivery, setDelivery] = useState(() => ({
+    ...EMPTY_DELIVERY,
+    address: user?.address ?? '',
+    phone: onlyDigits(user?.phone ?? '').slice(0, 10),
+  }));
+  const [saveToProfile, setSaveToProfile] = useState(true);
   const [payment, setPayment] = useState('card');
   const [card, setCard] = useState(EMPTY_CARD);
   const [cashWith, setCashWith] = useState('exact');
@@ -90,6 +98,9 @@ export default function CheckoutModal({
   const touch = (name) => () => setTouched(t => ({ ...t, [name]: true }));
   const setField = (field) => (e) => setDelivery(d => ({ ...d, [field]: e.target.value }));
 
+  const fullAddress = [delivery.address.trim(), delivery.detail.trim()].filter(Boolean).join(', ');
+  const differsFromProfile = fullAddress !== (user?.address ?? '') || delivery.phone !== onlyDigits(user?.phone ?? '');
+
   const currentStep = receipt ? 3 : Object.keys(deliveryErrors).length === 0 ? 2 : 1;
 
   async function handleConfirm() {
@@ -99,7 +110,7 @@ export default function CheckoutModal({
       return;
     }
     setError('');
-    const address = [delivery.address.trim(), delivery.detail.trim()].filter(Boolean).join(', ');
+    const address = fullAddress;
 
     try {
       if (payment === 'card') {
@@ -135,6 +146,10 @@ export default function CheckoutModal({
       };
       setReceipt(newReceipt);
       onOrderPlaced?.(newReceipt);
+      // Si el cliente lo pidió, la dirección queda guardada para el próximo pedido (si falla, el pedido ya está hecho)
+      if (saveToProfile && differsFromProfile) {
+        updateProfile({ address, phone: delivery.phone }).catch(() => {});
+      }
       setCard(EMPTY_CARD);
       clearCart();
     } catch (err) {
@@ -304,6 +319,13 @@ export default function CheckoutModal({
                       disabled={busy}
                     />
                   </label>
+
+                  {differsFromProfile && (
+                    <label className={styles['save-check']}>
+                      <input type="checkbox" checked={saveToProfile} onChange={e => setSaveToProfile(e.target.checked)} disabled={busy} />
+                      Guardar esta dirección y celular en mi perfil
+                    </label>
+                  )}
 
                   <p className={styles.hint}><IconTruck size={14} /> Entrega estimada: <strong>35 - 45 min</strong></p>
                 </section>

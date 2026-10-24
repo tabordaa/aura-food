@@ -269,6 +269,21 @@
 }
 .hint strong { color: var(--text-secondary); }
 
+.save-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+.save-check input {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--primary);
+  cursor: pointer;
+}
+
 /* Payment options */
 .pay-grid {
   display: grid;

@@ -58,6 +58,13 @@ export function AuthProvider({ children }) {
     await login(userData.email, userData.password);
   };
 
+  // Guarda cambios del perfil y actualiza el usuario en memoria (navbar, checkout…)
+  const updateProfile = async (changes) => {
+    const updated = await authService.updateMe(changes);
+    setUser(updated);
+    return updated;
+  };
+
   const logout = () => {
     localStorage.removeItem('token');
     clearLegacyOrderStorage();
@@ -68,7 +75,7 @@ export function AuthProvider({ children }) {
   if (loading) return <div>Cargando...</div>;
 
   return (
-    <AuthContext.Provider value={{ user, login, register, logout }}>
+    <AuthContext.Provider value={{ user, login, register, logout, updateProfile }}>
       {children}
     </AuthContext.Provider>
   );

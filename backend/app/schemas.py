@@ -26,6 +26,38 @@ class UserCreate(UserBase):
             raise ValueError("La contraseña es demasiado larga")
         return value
 
+class UserUpdate(BaseModel):
+    """Datos que el usuario puede cambiar de su perfil (el correo y el rol no se pueden cambiar)."""
+    name: str | None = Field(default=None, min_length=2, max_length=100)
+    address: str | None = Field(default=None, max_length=200)
+    phone: str | None = Field(default=None, max_length=20)
+
+    @field_validator("name", "address", "phone", mode="before")
+    @classmethod
+    def strip_text(cls, value):
+        # Un campo vacío se guarda como "sin dato"; los espacios de los extremos se ignoran
+        if isinstance(value, str):
+            value = value.strip()
+            return value or None
+        return value
+
+    @field_validator("phone")
+    @classmethod
+    def check_phone(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        digits = "".join(ch for ch in value if ch.isdigit())
+        if len(digits) != 10 or not digits.startswith("3"):
+            raise ValueError("El celular debe tener 10 dígitos y empezar por 3")
+        return digits
+
+    @field_validator("name")
+    @classmethod
+    def name_required(cls, value: str | None) -> str | None:
+        if value is None:
+            raise ValueError("El nombre no puede quedar vacío")
+        return value
+
 class UserResponse(BaseModel):
     # Sin restricciones de longitud: describe datos ya guardados, no entrada del usuario
     id: int
@@ -34,6 +66,7 @@ class UserResponse(BaseModel):
     role: RoleEnum
     address: str | None = None
     phone: str | None = None
+    created_at: datetime | None = None
 
     model_config = ConfigDict(from_attributes=True)
 

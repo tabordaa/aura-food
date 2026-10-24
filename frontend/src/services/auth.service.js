@@ -32,5 +32,13 @@ export const authService = {
 
   async getMe() {
     return fetchWithAuth('/api/auth/me');
-  }
+  },
+
+  // Nombre, dirección y teléfono (el correo y el rol no se pueden cambiar)
+  async updateMe(changes) {
+    return fetchWithAuth('/api/auth/me', {
+      method: 'PATCH',
+      body: JSON.stringify(changes),
+    });
+  },
 };
