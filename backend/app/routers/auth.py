@@ -21,7 +21,7 @@ def register(user: schemas.UserCreate, db: Session = Depends(database.get_db)):
         name=user.name,
         email=user.email,
         password_hash=hashed_password,
-        role=user.role,
+        role=models.RoleEnum.cliente,
         address=user.address,
         phone=user.phone
     )
@@ -39,11 +39,17 @@ def login(user_credentials: OAuth2PasswordRequestForm = Depends(), db: Session =
     # En nuestro caso, el 'username' es el email.
     user = db.query(models.User).filter(models.User.email == user_credentials.username).first()
 
-    if not user:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Credenciales inválidas")
+    # Se verifica siempre una contraseña (la real o la de referencia) para que el tiempo de respuesta
+    # no delate si el email está registrado
+    password_hash = user.password_hash if user else utils.DUMMY_HASH
+    password_ok = utils.verify_password(user_credentials.password, password_hash)
 
-    if not utils.verify_password(user_credentials.password, user.password_hash):
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Credenciales inválidas")
+    if not user or not password_ok:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Credenciales inválidas",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
 
     # Crear token JWT
     access_token = oauth2.create_access_token(data={"user_id": str(user.id)})

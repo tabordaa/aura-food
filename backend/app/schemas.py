@@ -1,23 +1,30 @@
 from datetime import datetime
 
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, Field
 
 from .models import OrderStatus, RoleEnum
 
 
 # --- Users ---
 class UserBase(BaseModel):
-    name: str
+    name: str = Field(min_length=2, max_length=100)
     email: EmailStr
-    role: RoleEnum = RoleEnum.cliente
-    address: str | None = None
-    phone: str | None = None
+    address: str | None = Field(default=None, max_length=200)
+    phone: str | None = Field(default=None, max_length=20)
 
 class UserCreate(UserBase):
-    password: str
+    # Sin campo "role": el registro público siempre crea clientes (cualquier "role" enviado se ignora).
+    # bcrypt solo usa los primeros 72 bytes, por eso se limita la longitud.
+    password: str = Field(min_length=8, max_length=72)
 
-class UserResponse(UserBase):
+class UserResponse(BaseModel):
+    # Sin restricciones de longitud: describe datos ya guardados, no entrada del usuario
     id: int
+    name: str
+    email: EmailStr
+    role: RoleEnum
+    address: str | None = None
+    phone: str | None = None
 
     class Config:
         from_attributes = True
