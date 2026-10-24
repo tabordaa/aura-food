@@ -15,32 +15,31 @@ export function stepIndex(status) {
 // Se reexportan desde utils/format para no cambiar los imports existentes
 export { formatOrderId, formatPrice, parseServerDate } from './format';
 
-/*
- * Mientras no exista el login, los pedidos del cliente se recuerdan en este
- * navegador. Guardamos el recibo (productos, pago, contacto) porque el backend
- * aún no almacena esos datos. Nunca se guarda información de la tarjeta.
- */
-const STORAGE_KEY = 'aura_orders';
-const MAX_SAVED = 20;
+// Estados finales que no siguen la línea de tiempo normal del pedido
+export const CLOSED_STATUSES = {
+  rechazado: { status: 'rechazado', label: 'Rechazado', desc: 'La tienda no pudo atender tu pedido', icon: '✖️' },
+  cancelado: { status: 'cancelado', label: 'Cancelado', desc: 'Cancelaste este pedido', icon: '🚫' },
+};
 
-export function getSavedOrders() {
-  try {
-    const list = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
-    return Array.isArray(list) ? list : [];
-  } catch {
-    return [];
-  }
+// Un pedido activo todavía puede cambiar de estado (se sigue consultando)
+export function isActiveOrder(status) {
+  return status !== 'entregado' && !CLOSED_STATUSES[status];
 }
 
-export function getSavedOrder(id) {
-  return getSavedOrders().find(o => String(o.id) === String(id)) || null;
+export function getStatusInfo(status) {
+  return CLOSED_STATUSES[status] || ORDER_STEPS[stepIndex(status)];
 }
 
-export function saveOrder(receipt) {
+export const PAYMENT_LABELS = {
+  card: 'Tarjeta crédito / débito',
+  cash: 'Efectivo al recibir',
+};
+
+// Versiones anteriores guardaban los recibos en el navegador (sin distinguir usuarios): se eliminan
+export function clearLegacyOrderStorage() {
   try {
-    const rest = getSavedOrders().filter(o => o.id !== receipt.id);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify([receipt, ...rest].slice(0, MAX_SAVED)));
+    localStorage.removeItem('aura_orders');
   } catch {
-    // Sin almacenamiento disponible (modo privado): el seguimiento sigue funcionando por URL
+    // Sin acceso al almacenamiento: no hay nada que limpiar
   }
 }

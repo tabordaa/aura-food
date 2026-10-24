@@ -269,6 +269,36 @@
 }
 .hint strong { color: var(--text-secondary); }
 
+.item-img {
+  width: 32px;
+  height: 32px;
+  object-fit: cover;
+  border-radius: var(--radius-sm);
+  display: block;
+}
+.item-img-placeholder {
+  background: #f0f0f0;
+  color: #ccc;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.save-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+.save-check input {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--primary);
+  cursor: pointer;
+}
+
 /* Payment options */
 .pay-grid {
   display: grid;

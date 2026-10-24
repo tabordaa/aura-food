@@ -100,3 +100,16 @@ class OrderItem(Base):
 
     order = relationship("Order", back_populates="items")
     product = relationship("Product")
+
+    # Se exponen en la respuesta del pedido (OrderItemResponse)
+    @property
+    def product_name(self):
+        return self.product.name if self.product else None
+
+    @property
+    def product_image_url(self):
+        return self.product.image_url if self.product else None
+
+    @property
+    def product_unit(self):
+        return self.product.unit if self.product else None

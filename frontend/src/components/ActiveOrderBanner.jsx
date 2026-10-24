@@ -1,12 +1,12 @@
 import { Link } from 'react-router';
 import useOrderStatus from '../hooks/useOrderStatus';
-import { ORDER_STEPS, formatOrderId, stepIndex } from '../utils/orders';
+import { ORDER_STEPS, formatOrderId, isActiveOrder, stepIndex } from '../utils/orders';
 import styles from '../pages/catalog/Catalog.module.css';
 
-// Aviso en la portada con el estado en vivo del último pedido (se oculta al entregarse)
+// Aviso en la portada con el estado en vivo del último pedido (se oculta al terminar)
 export default function ActiveOrderBanner({ orderId }) {
   const { order } = useOrderStatus(orderId);
-  if (!order || order.status === 'entregado') return null;
+  if (!order || !isActiveOrder(order.status)) return null;
 
   const current = stepIndex(order.status);
   const step = ORDER_STEPS[current];

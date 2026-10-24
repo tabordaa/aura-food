@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { authService } from '../services/auth.service';
 import { AUTH_EXPIRED_EVENT } from '../services/api';
 import { AuthContext } from './authContextObject';
+import { clearLegacyOrderStorage } from '../utils/orders';
+import { cartStorageKey } from '../hooks/useCart';
 import { useNavigate } from 'react-router';
 
 export function AuthProvider({ children }) {
@@ -37,6 +39,7 @@ export function AuthProvider({ children }) {
   const login = async (email, password) => {
     const data = await authService.login(email, password);
     localStorage.setItem('token', data.access_token);
+    clearLegacyOrderStorage();
     const userData = await authService.getMe();
     setUser(userData);
     
@@ -56,8 +59,18 @@ export function AuthProvider({ children }) {
     await login(userData.email, userData.password);
   };
 
+  // Guarda cambios del perfil y actualiza el usuario en memoria (navbar, checkout…)
+  const updateProfile = async (changes) => {
+    const updated = await authService.updateMe(changes);
+    setUser(updated);
+    return updated;
+  };
+
   const logout = () => {
     localStorage.removeItem('token');
+    // En un computador compartido, el siguiente usuario no debe ver el carrito del anterior
+    if (user) localStorage.removeItem(cartStorageKey(user.id));
+    clearLegacyOrderStorage();
     setUser(null);
     navigate('/login');
   };
@@ -65,7 +78,7 @@ export function AuthProvider({ children }) {
   if (loading) return <div>Cargando...</div>;
 
   return (
-    <AuthContext.Provider value={{ user, login, register, logout }}>
+    <AuthContext.Provider value={{ user, login, register, logout, updateProfile }}>
       {children}
     </AuthContext.Provider>
   );

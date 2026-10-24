@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator, model_validator
 
 from .models import OrderStatus, RoleEnum
 
@@ -26,6 +26,38 @@ class UserCreate(UserBase):
             raise ValueError("La contraseña es demasiado larga")
         return value
 
+class UserUpdate(BaseModel):
+    """Datos que el usuario puede cambiar de su perfil (el correo y el rol no se pueden cambiar)."""
+    name: str | None = Field(default=None, min_length=2, max_length=100)
+    address: str | None = Field(default=None, max_length=200)
+    phone: str | None = Field(default=None, max_length=20)
+
+    @field_validator("name", "address", "phone", mode="before")
+    @classmethod
+    def strip_text(cls, value):
+        # Un campo vacío se guarda como "sin dato"; los espacios de los extremos se ignoran
+        if isinstance(value, str):
+            value = value.strip()
+            return value or None
+        return value
+
+    @field_validator("phone")
+    @classmethod
+    def check_phone(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        digits = "".join(ch for ch in value if ch.isdigit())
+        if len(digits) != 10 or not digits.startswith("3"):
+            raise ValueError("El celular debe tener 10 dígitos y empezar por 3")
+        return digits
+
+    @field_validator("name")
+    @classmethod
+    def name_required(cls, value: str | None) -> str | None:
+        if value is None:
+            raise ValueError("El nombre no puede quedar vacío")
+        return value
+
 class UserResponse(BaseModel):
     # Sin restricciones de longitud: describe datos ya guardados, no entrada del usuario
     id: int
@@ -34,6 +66,7 @@ class UserResponse(BaseModel):
     role: RoleEnum
     address: str | None = None
     phone: str | None = None
+    created_at: datetime | None = None
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -50,11 +83,44 @@ class ProductBase(BaseModel):
     origin: str | None = None
     unit: str | None = None
 
-class ProductCreate(ProductBase):
-    pass
+# Categorías que muestra el catálogo (frontend: CatalogPage.CATEGORIES)
+ProductCategory = Literal["frutas", "dairy", "meat", "cleaning", "bakery"]
+
+class ProductCreate(BaseModel):
+    name: str = Field(min_length=2, max_length=120)
+    description: str | None = Field(default=None, max_length=1000)
+    price: float = Field(gt=0, le=10_000_000)
+    old_price: float | None = Field(default=None, gt=0, le=10_000_000)
+    category: ProductCategory
+    # Solo enlaces http(s): evita esquemas como javascript: o data: en la imagen
+    image_url: str | None = Field(default=None, max_length=500, pattern=r"^https?://\S+$")
+    stock: int = Field(default=0, ge=0, le=100_000)
+    tag: str | None = Field(default=None, max_length=40)
+    origin: str | None = Field(default=None, max_length=60)
+    unit: str | None = Field(default=None, max_length=40)
+
+    @field_validator("name", "description", "image_url", "tag", "origin", "unit", mode="before")
+    @classmethod
+    def blank_to_none(cls, value):
+        # Los formularios envían "" en los campos opcionales vacíos
+        if isinstance(value, str):
+            value = value.strip()
+            return value or None
+        return value
+
+    @model_validator(mode="after")
+    def old_price_above_price(self):
+        if self.old_price is not None and self.old_price <= self.price:
+            raise ValueError("El precio anterior debe ser mayor que el precio actual para mostrarse como oferta")
+        return self
+
+class ProductUpdate(ProductCreate):
+    is_active: bool = True
 
 class ProductResponse(ProductBase):
     id: int
+    is_active: bool = True
+    units_sold: int = 0  # solo lo calcula el catálogo público
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -69,6 +135,10 @@ class OrderItemCreate(OrderItemBase):
 class OrderItemResponse(OrderItemBase):
     id: int
     price_at_purchase: float
+    # Datos del producto para mostrar el pedido sin pedir el catálogo completo
+    product_name: str | None = None
+    product_image_url: str | None = None
+    product_unit: str | None = None
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -89,15 +159,68 @@ class OrderCreate(OrderBase):
 class OrderStatusUpdate(BaseModel):
     status: OrderStatus
 
+class OrderReject(BaseModel):
+    # El cliente ve este motivo en el seguimiento de su pedido
+    reason: str = Field(min_length=3, max_length=300)
+
+    @field_validator("reason")
+    @classmethod
+    def strip_reason(cls, value: str) -> str:
+        value = value.strip()
+        if len(value) < 3:
+            raise ValueError("Escribe el motivo del rechazo")
+        return value
+
+class UserSummary(BaseModel):
+    id: int
+    name: str | None = None
+
+    model_config = ConfigDict(from_attributes=True)
+
 class OrderResponse(OrderBase):
     id: int
     user_id: int
     total_price: float
+    delivery_fee: float = 0
     status: OrderStatus
+    rejection_reason: str | None = None
+    customer: UserSummary | None = None
+    courier: UserSummary | None = None
     created_at: datetime
+    updated_at: datetime | None = None
+    delivered_at: datetime | None = None
     items: list[OrderItemResponse]
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class AdminStats(BaseModel):
+    orders_by_status: dict[str, int]
+    total_orders: int
+    today_orders: int
+    today_revenue: float
+    active_products: int
+    low_stock_products: int
+    out_of_stock_products: int
+    clients: int
+
+
+class ClientSummary(BaseModel):
+    id: int
+    name: str
+    email: str
+    phone: str | None = None
+    address: str | None = None
+    created_at: datetime | None = None
+    orders_count: int
+    total_spent: float
+    last_order_at: datetime | None = None
+
+
+class CourierOrders(BaseModel):
+    available: list[OrderResponse]
+    active: list[OrderResponse]
+    history: list[OrderResponse]
 
 # --- Tokens ---
 class Token(BaseModel):

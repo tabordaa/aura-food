@@ -1,3 +1,5 @@
+import pytest
+
 from tests.conftest import PASSWORD
 
 
@@ -118,3 +120,45 @@ def test_existing_bcrypt_hashes_still_verify():
 
     assert utils.verify_password("admin123", legacy_hash)
     assert not utils.verify_password("otra", legacy_hash)
+
+
+def test_update_profile_changes_only_sent_fields(client, customer, customer_headers):
+    response = client.patch(
+        "/api/auth/me", json={"address": "  Calle 10 # 5-20  ", "phone": "300 123 4567"}, headers=customer_headers
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["address"] == "Calle 10 # 5-20"
+    assert body["phone"] == "3001234567"
+    assert body["name"] == customer.name
+
+
+def test_update_profile_ignores_email_and_role(client, customer, customer_headers):
+    response = client.patch(
+        "/api/auth/me", json={"name": "Nuevo Nombre", "email": "hack@test.com", "role": "admin"},
+        headers=customer_headers,
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["name"] == "Nuevo Nombre"
+    assert body["email"] == customer.email
+    assert body["role"] == "cliente"
+
+
+def test_update_profile_blank_address_clears_it(client, customer_headers):
+    client.patch("/api/auth/me", json={"address": "Calle 1"}, headers=customer_headers)
+
+    response = client.patch("/api/auth/me", json={"address": "   "}, headers=customer_headers)
+
+    assert response.json()["address"] is None
+
+
+@pytest.mark.parametrize("payload", [{"phone": "12345"}, {"phone": "4001234567"}, {"name": ""}, {"name": "A"}])
+def test_update_profile_validates(client, customer_headers, payload):
+    assert client.patch("/api/auth/me", json=payload, headers=customer_headers).status_code == 422
+
+
+def test_update_profile_requires_authentication(client):
+    assert client.patch("/api/auth/me", json={"name": "X Y"}).status_code == 401

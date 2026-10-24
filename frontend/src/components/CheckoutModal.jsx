@@ -3,8 +3,8 @@ import { useNavigate } from 'react-router';
 import { IconMapPin, IconLock, IconShield, IconCheck, IconArrowRight, IconPhone, IconTruck } from './Icons';
 import PaymentCardForm from './PaymentCardForm';
 import { BRAND_LABELS, detectBrand, onlyDigits, validateCard } from './cardUtils';
-import { saveOrder } from '../utils/orders';
 import { formatOrderId, formatPrice } from '../utils/format';
+import { useAuth } from '../hooks/useAuth';
 import { orderService } from '../services/order.service';
 import styles from './CheckoutModal.module.css';
 
@@ -45,7 +45,14 @@ export default function CheckoutModal({
   onOrderPlaced,
 }) {
   const navigate = useNavigate();
-  const [delivery, setDelivery] = useState(EMPTY_DELIVERY);
+  const { user, updateProfile } = useAuth();
+  // Se precargan la dirección y el celular guardados en el perfil
+  const [delivery, setDelivery] = useState(() => ({
+    ...EMPTY_DELIVERY,
+    address: user?.address ?? '',
+    phone: onlyDigits(user?.phone ?? '').slice(0, 10),
+  }));
+  const [saveToProfile, setSaveToProfile] = useState(true);
   const [payment, setPayment] = useState('card');
   const [card, setCard] = useState(EMPTY_CARD);
   const [cashWith, setCashWith] = useState('exact');
@@ -91,6 +98,9 @@ export default function CheckoutModal({
   const touch = (name) => () => setTouched(t => ({ ...t, [name]: true }));
   const setField = (field) => (e) => setDelivery(d => ({ ...d, [field]: e.target.value }));
 
+  const fullAddress = [delivery.address.trim(), delivery.detail.trim()].filter(Boolean).join(', ');
+  const differsFromProfile = fullAddress !== (user?.address ?? '') || delivery.phone !== onlyDigits(user?.phone ?? '');
+
   const currentStep = receipt ? 3 : Object.keys(deliveryErrors).length === 0 ? 2 : 1;
 
   async function handleConfirm() {
@@ -100,7 +110,7 @@ export default function CheckoutModal({
       return;
     }
     setError('');
-    const address = [delivery.address.trim(), delivery.detail.trim()].filter(Boolean).join(', ');
+    const address = fullAddress;
 
     try {
       if (payment === 'card') {
@@ -108,7 +118,7 @@ export default function CheckoutModal({
         await new Promise(resolve => setTimeout(resolve, CARD_PROCESSING_MS));
       }
       setStage('sending');
-      
+
       const resData = await orderService.createOrder({
         delivery_address: address,
         phone: delivery.phone,
@@ -126,17 +136,20 @@ export default function CheckoutModal({
         notes: delivery.notes.trim(),
         items: cart.map(item => ({ ...item })),
         subtotal: cartSubtotal,
-        deliveryCost,
-        // El backend todavía no suma el domicilio, así que mostramos el total que vio el cliente
-        total: cartTotal,
+        // Los montos finales son los que calculó el servidor
+        deliveryCost: resData.delivery_fee,
+        total: resData.total_price,
         paymentLabel: payment === 'card'
           ? `${BRAND_LABELS[brand]} •••• ${card.number.slice(-4)}`
           : 'Efectivo al recibir',
         change: payment === 'cash' ? change : 0,
       };
       setReceipt(newReceipt);
-      saveOrder(newReceipt);
       onOrderPlaced?.(newReceipt);
+      // Si el cliente lo pidió, la dirección queda guardada para el próximo pedido (si falla, el pedido ya está hecho)
+      if (saveToProfile && differsFromProfile) {
+        updateProfile({ address, phone: delivery.phone }).catch(() => {});
+      }
       setCard(EMPTY_CARD);
       clearCart();
     } catch (err) {
@@ -307,6 +320,13 @@ export default function CheckoutModal({
                     />
                   </label>
 
+                  {differsFromProfile && (
+                    <label className={styles['save-check']}>
+                      <input type="checkbox" checked={saveToProfile} onChange={e => setSaveToProfile(e.target.checked)} disabled={busy} />
+                      Guardar esta dirección y celular en mi perfil
+                    </label>
+                  )}
+
                   <p className={styles.hint}><IconTruck size={14} /> Entrega estimada: <strong>35 - 45 min</strong></p>
                 </section>
 
@@ -399,9 +419,9 @@ export default function CheckoutModal({
                     <div key={item.id} className={styles.item}>
                       <div className={styles['item-image']}>
                         {item.image_url ? (
-                          <img src={item.image_url} alt={item.name} style={{ width: '32px', height: '32px', objectFit: 'cover', borderRadius: '4px' }} />
+                          <img src={item.image_url} alt={item.name} className={styles['item-img']} />
                         ) : (
-                          <div style={{ width: '32px', height: '32px', background: '#f0f0f0', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ccc' }}>
+                          <div className={[styles['item-img'], styles['item-img-placeholder']].join(' ')}>
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 19V5a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v14M8 10l2-2 4 4 2-2"/></svg>
                           </div>
                         )}
@@ -416,7 +436,7 @@ export default function CheckoutModal({
                 </div>
 
                 <div className={styles.row}><span>Subtotal</span><span>{formatPrice(cartSubtotal)}</span></div>
-                <div className={styles.row}><span>Domicilio</span><span>{formatPrice(deliveryCost)}</span></div>
+                <div className={styles.row}><span>Domicilio</span><span>{deliveryCost == null ? 'Calculando…' : formatPrice(deliveryCost)}</span></div>
                 <div className={styles.divider} />
                 <div className={styles['total-row']}>
                   <span>Total a pagar</span>

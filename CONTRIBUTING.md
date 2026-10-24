@@ -46,8 +46,31 @@ git checkout -b feat/mi-tarea
 Haz tus cambios en el código (CSS, React, etc.). Cuando termines algo importante:
 ```bash
 git add .
-git commit -m "feat: agregada la pantalla inicial del domiciliario"
+git commit -m "feat(delivery): show the courier's delivery history"
 ```
+
+Los mensajes de commit siguen [Conventional Commits](https://www.conventionalcommits.org/es/) y se escriben en
+**inglés**: `tipo(área opcional): qué cambia`, en imperativo y sin punto final.
+
+| Tipo | Cuándo usarlo |
+|------|---------------|
+| `feat` | Funcionalidad nueva |
+| `fix` | Corrección de un error |
+| `refactor` | Cambio interno que no altera el comportamiento |
+| `chore` | Dependencias, configuración, scripts |
+| `docs` | Documentación |
+| `test` | Solo tests |
+
+Los textos que ve el usuario (pantallas, mensajes de error de la API) sí van en español.
+
+### 4.1 Antes de subir: revisa que todo pase
+Son los mismos chequeos que corre el CI; si fallan aquí, fallarán en el PR.
+```bash
+cd backend && ruff check . && pytest
+cd frontend && npm run lint && npm run build
+```
+Si cambiaste `backend/app/models.py`, crea también la migración (`alembic revision -m "..."`): ver
+[backend/README.md](backend/README.md).
 
 ### 5. Sube tu rama a GitHub
 ```bash
@@ -59,5 +82,17 @@ git push -u origin feat/mi-tarea
 2. Verás un botón verde que dice **"Compare & pull request"**.
 3. Asegúrate de que estás uniendo tu rama hacia `develop` (no hacia `main`).
 4. Avisa por el grupo: *"¡Muchachos, subí la pantalla del carrito, revisen el PR!"*.
-5. El **Tech Lead** revisará el código y, si todo está bien, hará el "Merge" (unirá tu código con `develop`).
-6. Una vez unido, tu tarea está lista. ¡Vuelve al Paso 2 para tu siguiente tarea!
+5. Espera a que el CI de GitHub Actions quede en verde (backend, migrations y frontend). Si algo falla, corrígelo en tu
+   misma rama y vuelve a hacer push: el PR se actualiza solo.
+6. El **Tech Lead** revisará el código y, si todo está bien, hará el "Merge" con **Squash** (unirá tu código con
+   `develop` en un solo commit).
+7. Una vez unido, tu tarea está lista. ¡Vuelve al Paso 2 para tu siguiente tarea!
+
+## Cosas que nunca deben subirse
+- Los archivos `.env` (tienen la conexión real a la base de datos compartida y el `SECRET_KEY`). Solo se versionan los
+  `.env.example`.
+- `venv/`, `node_modules/`, `dist/` ni bases de datos locales (`*.db`).
+
+## La base de datos es compartida
+Todos usamos la misma BD de pruebas en Supabase. Puedes crear datos para probar, pero **nunca** borres datos de otros
+ni ejecutes `DROP`, `TRUNCATE` o `alembic downgrade` contra ella.

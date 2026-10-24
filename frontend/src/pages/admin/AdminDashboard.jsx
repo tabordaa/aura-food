@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useAuth } from '../../hooks/useAuth';
-import { IconCheck, IconMapPin, IconSearch } from '../../components/Icons';
+import { IconCheck, IconMapPin } from '../../components/Icons';
+import AdminLayout from './AdminLayout';
 
-import { formatOrderId, formatPrice, parseServerDate } from '../../utils/orders';
+import { formatOrderId, formatPrice, initials, parseServerDate } from '../../utils/format';
+import { adminService } from '../../services/admin.service';
 import { orderService } from '../../services/order.service';
 import styles from './Admin.module.css';
 
@@ -16,6 +17,7 @@ const STATUS_META = {
   asignado:  { label: 'En camino',      tone: 'progress' },
   entregado: { label: 'Entregado',      tone: 'done' },
   rechazado: { label: 'Rechazado',      tone: 'rejected' },
+  cancelado: { label: 'Cancelado',      tone: 'rejected' },
 };
 
 const TABS = [
@@ -25,13 +27,7 @@ const TABS = [
   { id: 'asignado',  label: 'En camino' },
   { id: 'entregado', label: 'Entregados' },
   { id: 'rechazado', label: 'Rechazados' },
-];
-
-const NAV = [
-  { id: 'pedidos',  icon: '🧾', label: 'Pedidos' },
-  { id: 'products', icon: '🥑', label: 'Productos' },
-  { id: 'clients',  icon: '👥', label: 'Clientes' },
-  { id: 'settings', icon: '⚙️', label: 'Configuración' },
+  { id: 'cancelado', label: 'Cancelados' },
 ];
 
 function timeAgo(date, now) {
@@ -43,19 +39,21 @@ function timeAgo(date, now) {
   return date.toLocaleDateString('es-CO', { day: 'numeric', month: 'short' });
 }
 
-function isSameDay(a, b) {
-  return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
-}
-
 function describeItems(items) {
-  const names = items.map(i => `Prod #${i.product_id}`);
+  const names = items.map(i => i.product_name || `Prod #${i.product_id}`);
   const units = items.reduce((acc, i) => acc + i.quantity, 0);
   return { names: names.join(', '), units };
 }
 
+// Quién lleva el pedido (o si todavía espera domiciliario)
+function courierNote(order) {
+  if (order.courier) return `🛵 ${order.courier.name}`;
+  return order.status === 'preparado' ? 'Esperando domiciliario' : '—';
+}
+
 export default function AdminDashboard() {
-  const { user, logout } = useAuth();
   const [orders, setOrders] = useState([]);
+  const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [online, setOnline] = useState(true);
   const [lastUpdate, setLastUpdate] = useState(null);
@@ -64,12 +62,14 @@ export default function AdminDashboard() {
   const [page, setPage] = useState(1);
   const [busyId, setBusyId] = useState(null);
   const [confirmRejectId, setConfirmRejectId] = useState(null);
+  const [rejectReason, setRejectReason] = useState('');
   const [toast, setToast] = useState(null);
 
   // Los setState ocurren en los callbacks de la promesa (cuando llega la respuesta), no al llamar la función
-  const loadOrders = useCallback(() => orderService.getOrders()
-    .then(list => {
+  const loadOrders = useCallback(() => Promise.all([orderService.getOrders(), adminService.getStats()])
+    .then(([list, summary]) => {
       setOrders(list);
+      setStats(summary);
       setOnline(true);
       setLastUpdate(new Date());
     })
@@ -90,29 +90,33 @@ export default function AdminDashboard() {
   }, [toast]);
 
   async function changeStatus(order, status) {
+    const rejecting = status === 'rechazado';
     setBusyId(order.id);
-    setConfirmRejectId(null);
     try {
-      const updated = await orderService.updateStatus(order.id, status);
+      const updated = rejecting
+        ? await orderService.rejectOrder(order.id, rejectReason.trim())
+        : await orderService.updateStatus(order.id, status);
       setOrders(list => list.map(o => (o.id === updated.id ? updated : o)));
+      adminService.getStats().then(setStats).catch(() => {});
+      setConfirmRejectId(null);
+      setRejectReason('');
       setToast({
-        type: status === 'rechazado' ? 'warning' : 'success',
-        text: status === 'rechazado'
-          ? `Pedido ${formatOrderId(order.id)} rechazado`
+        type: rejecting ? 'warning' : 'success',
+        text: rejecting
+          ? `Pedido ${formatOrderId(order.id)} rechazado: el cliente verá el motivo`
           : `Pedido ${formatOrderId(order.id)} aceptado: pasa a preparación`,
       });
     } catch (err) {
-      const unsupported = status === 'rechazado' && err.status === 422;
       setToast({
         type: 'error',
-        text: unsupported
-          ? 'El backend todavía no permite rechazar pedidos (falta el estado "rechazado").'
-          : err instanceof TypeError ? 'Sin conexión con el servidor. Intenta de nuevo.' : err.message,
+        text: err instanceof TypeError ? 'Sin conexión con el servidor. Intenta de nuevo.' : err.message,
       });
     } finally {
       setBusyId(null);
     }
   }
+
+  const openReject = (orderId) => { setConfirmRejectId(orderId); setRejectReason(''); };
 
   const now = new Date();
   const counts = useMemo(() => {
@@ -121,9 +125,11 @@ export default function AdminDashboard() {
     return c;
   }, [orders]);
 
-  const todayOrders = orders.filter(o => isSameDay(parseServerDate(o.created_at), now) && o.status !== 'rechazado');
-  const todayRevenue = todayOrders.reduce((acc, o) => acc + o.total_price, 0);
-  const inProgress = (counts.preparado || 0) + (counts.asignado || 0);
+  // Los indicadores vienen del servidor (cubren todos los pedidos, no solo los cargados en la tabla)
+  const byStatus = stats?.orders_by_status ?? counts;
+  const totalOrders = stats?.total_orders ?? orders.length;
+  const todayCount = stats?.today_orders ?? 0;
+  const inProgress = (byStatus.preparado || 0) + (byStatus.asignado || 0);
 
   const term = search.trim().toLowerCase();
   const visible = orders.filter(o => {
@@ -132,7 +138,7 @@ export default function AdminDashboard() {
     return formatOrderId(o.id).includes(term)
       || String(o.id) === term
       || o.delivery_address.toLowerCase().includes(term)
-      || `cliente ${o.user_id}`.includes(term)
+      || (o.customer?.name ?? '').toLowerCase().includes(term)
       || describeItems(o.items).names.toLowerCase().includes(term);
   });
   const totalPages = Math.max(1, Math.ceil(visible.length / PAGE_SIZE));
@@ -142,63 +148,14 @@ export default function AdminDashboard() {
   const selectTab = (id) => { setTab(id); setPage(1); };
 
   return (
-    <div className={styles.layout}>
-      {/* Sidebar */}
-      <aside className={styles.sidebar}>
-        <div className={styles.brand}>
-          <span className={styles['brand-logo']}>🌿</span>
-          <div>
-            <strong>Aura Food</strong>
-            <span className={styles['brand-badge']}>Admin</span>
-          </div>
-        </div>
-
-        <nav className={styles.nav}>
-          {NAV.map(item => (
-            <button
-              key={item.id}
-              type="button"
-              className={[styles['nav-item'], item.id === 'pedidos' ? styles.active : ''].join(' ')}
-              disabled={item.id !== 'pedidos'}
-              title={item.id !== 'pedidos' ? 'Próximamente' : undefined}
-            >
-              <span>{item.icon}</span> {item.label}
-              {item.id !== 'pedidos' && <em>Pronto</em>}
-              {item.id === 'pedidos' && counts.pendiente > 0 && <b className={styles['nav-badge']}>{counts.pendiente}</b>}
-            </button>
-          ))}
-        </nav>
-
-        <div className={styles.profile}>
-          <span className={styles.avatar}>A</span>
-          <div>
-            <strong>{user?.name || 'Administrador'}</strong>
-            <small>Supermercado</small>
-          </div>
-          <button type="button" className={styles.logout} onClick={logout} aria-label="Cerrar sesión" title="Cerrar sesión">⎋</button>
-        </div>
-      </aside>
-
-      {/* Contenido */}
-      <main className={styles.main}>
-        <header className={styles.topbar}>
-          <label className={styles.search}>
-            <IconSearch size={16} />
-            <input
-              placeholder="Buscar por # de pedido, cliente, dirección o producto…"
-              value={search}
-              onChange={e => { setSearch(e.target.value); setPage(1); }}
-            />
-          </label>
-          <span className={[styles.connection, online ? '' : styles.offline].join(' ')}>
-            <span className={styles['connection-dot']} />
-            {online ? 'Tienda en línea' : 'Sin conexión con el servidor'}
-          </span>
-          <span className={styles.today}>
-            📅 {now.toLocaleDateString('es-CO', { weekday: 'long', day: 'numeric', month: 'long' })}
-          </span>
-        </header>
-
+    <AdminLayout
+      active="pedidos"
+      pendingCount={byStatus.pendiente || 0}
+      search={search}
+      onSearch={value => { setSearch(value); setPage(1); }}
+      searchPlaceholder="Buscar por # de pedido, cliente, dirección o producto…"
+      online={online}
+    >
         <div className={styles.content}>
           <div className={styles['page-head']}>
             <div>
@@ -217,26 +174,26 @@ export default function AdminDashboard() {
           <section className={styles.kpis}>
             <div className={styles.kpi}>
               <div className={styles['kpi-head']}><span>Pedidos nuevos</span><i>🔔</i></div>
-              <p className={styles['kpi-value']}>{counts.pendiente || 0}<small> por aceptar</small></p>
-              {counts.pendiente > 0
+              <p className={styles['kpi-value']}>{byStatus.pendiente || 0}<small> por aceptar</small></p>
+              {byStatus.pendiente > 0
                 ? <span className={[styles.chip, styles['chip-alert']].join(' ')}>● Atención requerida</span>
                 : <span className={styles.chip}>Todo al día</span>}
             </div>
             <div className={styles.kpi}>
               <div className={styles['kpi-head']}><span>Ingresos de hoy</span><i>💵</i></div>
-              <p className={styles['kpi-value']}>{formatPrice(todayRevenue)}</p>
-              <span className={styles['kpi-foot']}>{todayOrders.length} pedido{todayOrders.length !== 1 ? 's' : ''} hoy</span>
+              <p className={styles['kpi-value']}>{formatPrice(stats?.today_revenue ?? 0)}</p>
+              <span className={styles['kpi-foot']}>{todayCount} pedido{todayCount !== 1 ? 's' : ''} hoy · incluye domicilio</span>
             </div>
             <div className={styles.kpi}>
               <div className={styles['kpi-head']}><span>En curso</span><i>🛵</i></div>
               <p className={styles['kpi-value']}>{inProgress}<small> en preparación o camino</small></p>
-              <span className={styles['kpi-foot']}>{counts.preparado || 0} preparando • {counts.asignado || 0} en camino</span>
+              <span className={styles['kpi-foot']}>{byStatus.preparado || 0} preparando • {byStatus.asignado || 0} en camino</span>
             </div>
             <div className={styles.kpi}>
               <div className={styles['kpi-head']}><span>Completados</span><i>✅</i></div>
-              <p className={styles['kpi-value']}>{counts.entregado || 0}<small> de {orders.length} totales</small></p>
+              <p className={styles['kpi-value']}>{byStatus.entregado || 0}<small> de {totalOrders} totales</small></p>
               <span className={styles['kpi-foot']}>
-                {orders.length ? Math.round(((counts.entregado || 0) / orders.length) * 100) : 0}% entregados
+                {totalOrders ? Math.round(((byStatus.entregado || 0) / totalOrders) * 100) : 0}% entregados
               </span>
             </div>
           </section>
@@ -244,7 +201,7 @@ export default function AdminDashboard() {
           {/* Tabla */}
           <section className={styles.panel}>
             <div className={styles.tabs} role="tablist">
-              {TABS.filter(t => t.id !== 'rechazado' || counts.rechazado).map(t => (
+              {TABS.filter(t => !['rechazado', 'cancelado'].includes(t.id) || counts[t.id]).map(t => (
                 <button
                   key={t.id}
                   type="button"
@@ -261,91 +218,107 @@ export default function AdminDashboard() {
               ))}
             </div>
 
-            <table className={styles.table}>
-              <thead>
-                <tr>
-                  <th>Pedido</th>
-                  <th>Cliente</th>
-                  <th>Dirección de entrega</th>
-                  <th>Productos</th>
-                  <th>Total</th>
-                  <th>Estado</th>
-                  <th className={styles['col-actions']}>Acciones</th>
-                </tr>
-              </thead>
-              <tbody>
-                {loading && orders.length === 0 ? (
-                  <tr><td colSpan={7} className={styles.empty}>Cargando pedidos…</td></tr>
-                ) : pageOrders.length === 0 ? (
+            <div className={styles['table-wrap']}>
+              <table className={styles.table}>
+                <thead>
                   <tr>
-                    <td colSpan={7} className={styles.empty}>
-                      {!online && orders.length === 0
-                        ? '📡 No pudimos conectar con el backend. Revisa que esté corriendo en el puerto 8000.'
-                        : tab === 'pendiente' && !term ? '🎉 No hay pedidos pendientes por ahora.' : 'No hay pedidos que coincidan.'}
-                    </td>
+                    <th>Pedido</th>
+                    <th>Cliente</th>
+                    <th>Productos</th>
+                    <th>Total</th>
+                    <th>Estado</th>
+                    <th className={styles['col-actions']}>Acciones</th>
                   </tr>
-                ) : pageOrders.map(order => {
-                  const meta = STATUS_META[order.status] ?? { label: order.status, tone: 'progress' };
-                  const created = parseServerDate(order.created_at);
-                  const { names, units } = describeItems(order.items);
-                  const busy = busyId === order.id;
-                  return (
-                    <tr key={order.id} className={busy ? styles.busy : ''}>
-                      <td>
-                        <div className={styles['order-id']}>
-                          <span className={[styles.dot, styles[`dot-${meta.tone}`]].join(' ')} />
-                          <strong>{formatOrderId(order.id)}</strong>
-                        </div>
-                        <small className={styles.muted}>{timeAgo(created, now)}</small>
-                      </td>
-                      <td>
-                        <div className={styles.client}>
-                          <span className={styles['client-avatar']}>C{order.user_id}</span>
-                          <span>Cliente #{order.user_id}</span>
-                        </div>
-                      </td>
-                      <td>
-                        <div className={styles.address}>
-                          <IconMapPin size={15} />
-                          <span>{order.delivery_address}</span>
-                        </div>
-                      </td>
-                      <td>
-                        <p className={styles.products} title={names}>{names}</p>
-                        <span className={styles['items-chip']}>{units} unidad{units !== 1 ? 'es' : ''}</span>
-                      </td>
-                      <td className={styles.total}>{formatPrice(order.total_price)}</td>
-                      <td>
-                        <span className={[styles.status, styles[`status-${meta.tone}`]].join(' ')}>
-                          {meta.tone === 'done' ? <IconCheck size={12} /> : <span className={styles['status-dot']} />}
-                          {meta.label}
-                        </span>
-                      </td>
-                      <td className={styles['col-actions']}>
-                        {order.status !== 'pendiente' ? (
-                          <span className={styles.muted}>—</span>
-                        ) : confirmRejectId === order.id ? (
-                          <div className={styles.confirm}>
-                            <span>¿Rechazar?</span>
-                            <button type="button" className={styles['btn-danger']} onClick={() => changeStatus(order, 'rechazado')} disabled={busy}>Sí</button>
-                            <button type="button" className={styles['btn-ghost']} onClick={() => setConfirmRejectId(null)} disabled={busy}>No</button>
-                          </div>
-                        ) : (
-                          <div className={styles.actions}>
-                            <button type="button" className={styles['btn-accept']} onClick={() => changeStatus(order, 'preparado')} disabled={busy}>
-                              {busy ? '…' : <><IconCheck size={13} /> Aceptar</>}
-                            </button>
-                            <button type="button" className={styles['btn-reject']} onClick={() => setConfirmRejectId(order.id)} disabled={busy}>
-                              ✕ Rechazar
-                            </button>
-                          </div>
-                        )}
+                </thead>
+                <tbody>
+                  {loading && orders.length === 0 ? (
+                    <tr><td colSpan={6} className={styles.empty}>Cargando pedidos…</td></tr>
+                  ) : pageOrders.length === 0 ? (
+                    <tr>
+                      <td colSpan={6} className={styles.empty}>
+                        {!online && orders.length === 0
+                          ? '📡 No pudimos conectar con el backend. Revisa que esté corriendo en el puerto 8000.'
+                          : tab === 'pendiente' && !term ? '🎉 No hay pedidos pendientes por ahora.' : 'No hay pedidos que coincidan.'}
                       </td>
                     </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+                  ) : pageOrders.map(order => {
+                    const meta = STATUS_META[order.status] ?? { label: order.status, tone: 'progress' };
+                    const created = parseServerDate(order.created_at);
+                    const { names, units } = describeItems(order.items);
+                    const busy = busyId === order.id;
+                    return (
+                      <tr key={order.id} className={busy ? styles.busy : ''}>
+                        <td>
+                          <div className={styles['order-id']}>
+                            <span className={[styles.dot, styles[`dot-${meta.tone}`]].join(' ')} />
+                            <strong>{formatOrderId(order.id)}</strong>
+                          </div>
+                          <small className={styles.muted}>{timeAgo(created, now)}</small>
+                        </td>
+                        <td>
+                          {/* La dirección va debajo del cliente para que la tabla quepa sin scroll en portátiles */}
+                          <div className={styles.client}>
+                            <span className={styles['client-avatar']}>{initials(order.customer?.name)}</span>
+                            <div>
+                              <strong>{order.customer?.name ?? `Cliente #${order.user_id}`}</strong>
+                              <div className={[styles.address, styles.muted].join(' ')}>
+                                <IconMapPin size={13} />
+                                <span>{order.delivery_address}</span>
+                              </div>
+                            </div>
+                          </div>
+                        </td>
+                        <td>
+                          <p className={styles.products} title={names}>{names}</p>
+                          <span className={styles['items-chip']}>{units} unidad{units !== 1 ? 'es' : ''}</span>
+                        </td>
+                        <td className={styles.total}>{formatPrice(order.total_price)}</td>
+                        <td>
+                          <span className={[styles.status, styles[`status-${meta.tone}`]].join(' ')}>
+                            {meta.tone === 'done' ? <IconCheck size={12} /> : <span className={styles['status-dot']} />}
+                            {meta.label}
+                          </span>
+                        </td>
+                        <td className={styles['col-actions']}>
+                          {order.status !== 'pendiente' ? (
+                            <span className={styles.muted}>{courierNote(order)}</span>
+                          ) : confirmRejectId === order.id ? (
+                            <form
+                              className={styles.confirm}
+                              onSubmit={e => { e.preventDefault(); if (rejectReason.trim().length >= 3) changeStatus(order, 'rechazado'); }}
+                            >
+                              <input
+                                className={styles['reason-input']}
+                                placeholder="Motivo (lo verá el cliente)"
+                                aria-label="Motivo del rechazo"
+                                value={rejectReason}
+                                onChange={e => setRejectReason(e.target.value)}
+                                maxLength={300}
+                                disabled={busy}
+                                autoFocus
+                              />
+                              <button type="submit" className={styles['btn-danger']} disabled={busy || rejectReason.trim().length < 3}>
+                                {busy ? '…' : 'Rechazar'}
+                              </button>
+                              <button type="button" className={styles['btn-ghost']} onClick={() => setConfirmRejectId(null)} disabled={busy}>No</button>
+                            </form>
+                          ) : (
+                            <div className={styles.actions}>
+                              <button type="button" className={styles['btn-accept']} onClick={() => changeStatus(order, 'preparado')} disabled={busy}>
+                                {busy ? '…' : <><IconCheck size={13} /> Aceptar</>}
+                              </button>
+                              <button type="button" className={styles['btn-reject']} onClick={() => openReject(order.id)} disabled={busy}>
+                                ✕ Rechazar
+                              </button>
+                            </div>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
 
             <div className={styles.pagination}>
               <span>
@@ -368,13 +341,12 @@ export default function AdminDashboard() {
             </div>
           </section>
         </div>
-      </main>
 
       {toast && (
         <div className={[styles.toast, styles[`toast-${toast.type}`]].join(' ')} role="status">
           {toast.text}
         </div>
       )}
-    </div>
+    </AdminLayout>
   );
 }
