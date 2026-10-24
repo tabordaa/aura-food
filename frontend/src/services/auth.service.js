@@ -1,5 +1,4 @@
-import { fetchWithAuth } from './api';
-import { API_URL } from '../utils/orders';
+import { API_URL, fetchWithAuth, getErrorMessage } from './api';
 
 export const authService = {
   async login(email, password) {
@@ -18,7 +17,7 @@ export const authService = {
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.detail || 'Error al iniciar sesión');
+      throw new Error(getErrorMessage(errorData.detail, 'Error al iniciar sesión'));
     }
 
     return response.json(); // { access_token, token_type }

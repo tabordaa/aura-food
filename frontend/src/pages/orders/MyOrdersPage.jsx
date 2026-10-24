@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ORDER_STEPS, fetchOrder, formatOrderId, formatPrice, getSavedOrders, stepIndex } from '../../utils/orders';
+import { ORDER_STEPS, formatOrderId, formatPrice, getSavedOrders, stepIndex } from '../../utils/orders';
+import { orderService } from '../../services/order.service';
 import OrdersTopbar from './OrdersTopbar';
 import styles from './Orders.module.css';
 
@@ -11,7 +12,7 @@ export default function MyOrdersPage() {
   useEffect(() => {
     let cancelled = false;
     Promise.all(orders.map(o =>
-      fetchOrder(o.id).then(r => [o.id, r ? r.status : 'missing']).catch(() => [o.id, null])
+      orderService.getOrder(o.id).then(r => [o.id, r ? r.status : 'missing']).catch(() => [o.id, null])
     )).then(entries => { if (!cancelled) setStatuses(Object.fromEntries(entries)); });
     return () => { cancelled = true; };
   }, [orders]);

@@ -2,7 +2,8 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { IconCheck, IconMapPin, IconSearch } from '../../components/Icons';
 
-import { fetchOrders, formatOrderId, formatPrice, parseServerDate, updateOrderStatus } from '../../utils/orders';
+import { formatOrderId, formatPrice, parseServerDate } from '../../utils/orders';
+import { orderService } from '../../services/order.service';
 import styles from './Admin.module.css';
 
 const REFRESH_MS = 15000;
@@ -67,7 +68,7 @@ export default function AdminDashboard() {
 
   const loadOrders = useCallback(async () => {
     try {
-      setOrders(await fetchOrders());
+      setOrders(await orderService.getOrders());
       setOnline(true);
       setLastUpdate(new Date());
     } catch {
@@ -94,7 +95,7 @@ export default function AdminDashboard() {
     setBusyId(order.id);
     setConfirmRejectId(null);
     try {
-      const updated = await updateOrderStatus(order.id, status);
+      const updated = await orderService.updateStatus(order.id, status);
       setOrders(list => list.map(o => (o.id === updated.id ? updated : o)));
       setToast({
         type: status === 'rechazado' ? 'warning' : 'success',

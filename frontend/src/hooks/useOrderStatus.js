@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { fetchOrder } from '../utils/orders';
+import { orderService } from '../services/order.service';
 
 const POLL_MS = 8000;
 
@@ -14,7 +14,7 @@ export default function useOrderStatus(id) {
 
     async function load() {
       try {
-        const order = await fetchOrder(id);
+        const order = await orderService.getOrder(id);
         if (cancelled) return;
         setState({ order, loading: false, notFound: order === null, error: '', updatedAt: new Date() });
         if (order && order.status !== 'entregado') timer = setTimeout(load, POLL_MS);

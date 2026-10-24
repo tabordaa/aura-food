@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 import { authService } from '../services/auth.service';
+import { AUTH_EXPIRED_EVENT } from '../services/api';
 import { useNavigate } from 'react-router-dom';
 
 const AuthContext = createContext(null);
@@ -26,6 +27,16 @@ export function AuthProvider({ children }) {
       setLoading(false);
     }
   }, []);
+
+  // Si el backend responde 401 (token vencido o inválido) se cierra la sesión y se vuelve al login
+  useEffect(() => {
+    const onExpired = () => {
+      setUser(null);
+      navigate('/login?expired=1', { replace: true });
+    };
+    window.addEventListener(AUTH_EXPIRED_EVENT, onExpired);
+    return () => window.removeEventListener(AUTH_EXPIRED_EVENT, onExpired);
+  }, [navigate]);
 
   const login = async (email, password) => {
     const data = await authService.login(email, password);
