@@ -1,5 +1,7 @@
-from app.database import engine
 from sqlalchemy import text
+
+from app.database import engine
+
 
 def run_migration():
     with engine.connect() as conn:
@@ -9,7 +11,7 @@ def run_migration():
             conn.execute(text("ALTER TABLE products ADD COLUMN IF NOT EXISTS tag VARCHAR;"))
             conn.execute(text("ALTER TABLE products ADD COLUMN IF NOT EXISTS origin VARCHAR;"))
             conn.execute(text("ALTER TABLE products ADD COLUMN IF NOT EXISTS unit VARCHAR;"))
-            
+
             conn.commit()
             print("Migración exitosa: columnas agregadas a la tabla products.")
         except Exception as e:

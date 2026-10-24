@@ -1,5 +1,5 @@
-from app.database import SessionLocal, engine
 from app import models, utils
+from app.database import SessionLocal, engine
 
 # Asegurarse de que las tablas existan
 models.Base.metadata.create_all(bind=engine)
@@ -39,7 +39,7 @@ def seed_data():
             if not existing:
                 product = models.Product(**p_data)
                 db.add(product)
-        
+
         db.commit()
         print("8 Productos de prueba creados")
 

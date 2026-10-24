@@ -1,8 +1,11 @@
-from sqlalchemy import Column, Integer, String, Float, ForeignKey, DateTime, Enum, Text
-from sqlalchemy.orm import relationship
-from datetime import datetime
 import enum
+from datetime import datetime
+
+from sqlalchemy import Column, DateTime, Enum, Float, ForeignKey, Integer, String, Text
+from sqlalchemy.orm import relationship
+
 from .database import Base
+
 
 class RoleEnum(str, enum.Enum):
     cliente = "cliente"
@@ -25,7 +28,7 @@ class User(Base):
     role = Column(Enum(RoleEnum), default=RoleEnum.cliente)
     address = Column(String, nullable=True)
     phone = Column(String, nullable=True)
-    
+
     # Relación uno-a-muchos con Orders
     orders = relationship("Order", back_populates="customer")
 
@@ -56,7 +59,7 @@ class Order(Base):
     notes = Column(Text, nullable=True)
     payment_method = Column(String, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
-    
+
     customer = relationship("User", back_populates="orders")
     items = relationship("OrderItem", back_populates="order")
 

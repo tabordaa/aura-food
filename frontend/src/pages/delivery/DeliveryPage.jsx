@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { IconCheck, IconMapPin, IconTruck } from '../../components/Icons';
 import styles from './Delivery.module.css';

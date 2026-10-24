@@ -1,15 +1,17 @@
-from pydantic import BaseModel, EmailStr
-from typing import List, Optional
 from datetime import datetime
-from .models import RoleEnum, OrderStatus
+
+from pydantic import BaseModel, EmailStr
+
+from .models import OrderStatus, RoleEnum
+
 
 # --- Users ---
 class UserBase(BaseModel):
     name: str
     email: EmailStr
     role: RoleEnum = RoleEnum.cliente
-    address: Optional[str] = None
-    phone: Optional[str] = None
+    address: str | None = None
+    phone: str | None = None
 
 class UserCreate(UserBase):
     password: str
@@ -23,15 +25,15 @@ class UserResponse(UserBase):
 # --- Products ---
 class ProductBase(BaseModel):
     name: str
-    description: Optional[str] = None
+    description: str | None = None
     price: float
-    old_price: Optional[float] = None
+    old_price: float | None = None
     category: str
-    image_url: Optional[str] = None
+    image_url: str | None = None
     stock: int = 0
-    tag: Optional[str] = None
-    origin: Optional[str] = None
-    unit: Optional[str] = None
+    tag: str | None = None
+    origin: str | None = None
+    unit: str | None = None
 
 class ProductCreate(ProductBase):
     pass
@@ -59,12 +61,12 @@ class OrderItemResponse(OrderItemBase):
 
 class OrderBase(BaseModel):
     delivery_address: str
-    phone: Optional[str] = None
-    notes: Optional[str] = None
-    payment_method: Optional[str] = None
+    phone: str | None = None
+    notes: str | None = None
+    payment_method: str | None = None
 
 class OrderCreate(OrderBase):
-    items: List[OrderItemCreate]
+    items: list[OrderItemCreate]
 
 class OrderStatusUpdate(BaseModel):
     status: OrderStatus
@@ -75,7 +77,7 @@ class OrderResponse(OrderBase):
     total_price: float
     status: OrderStatus
     created_at: datetime
-    items: List[OrderItemResponse]
+    items: list[OrderItemResponse]
 
     class Config:
         from_attributes = True
@@ -86,4 +88,4 @@ class Token(BaseModel):
     token_type: str
 
 class TokenData(BaseModel):
-    id: Optional[str] = None
+    id: str | None = None

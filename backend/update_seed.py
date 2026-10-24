@@ -1,5 +1,6 @@
-from app.database import SessionLocal
 from app import models, utils
+from app.database import SessionLocal
+
 
 def update_data():
     db = SessionLocal()
@@ -31,7 +32,7 @@ def update_data():
                     setattr(existing_user, key, value)
             else:
                 db.add(models.User(**u_data))
-        
+
         # Productos
         products = [
             {"id": 1, "name": "Aguacate Hass Maduro", "price": 4500, "old_price": None, "tag": "Fresco", "origin": "🌿 Cosecha Nacional", "unit": "x 500g", "category": "frutas", "stock": 50, "image_url": "https://images.unsplash.com/photo-1669143017427-26801de9bcc6?q=80&w=1114&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"},
@@ -51,7 +52,7 @@ def update_data():
                     setattr(existing, key, value)
             else:
                 db.add(models.Product(**p_data))
-        
+
         db.commit()
         print("Productos actualizados correctamente.")
     except Exception as e:
