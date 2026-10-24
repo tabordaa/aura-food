@@ -18,6 +18,11 @@ export const orderService = {
     }
   },
 
+  // Pedidos del usuario autenticado, del más reciente al más antiguo
+  async getMyOrders(limit = 50) {
+    return fetchWithAuth(`/api/orders/me?limit=${limit}`);
+  },
+
   // Solo para admin y domiciliario
   async getOrders(status) {
     const query = status ? `?status=${encodeURIComponent(status)}` : '';

@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router';
 import { IconMapPin, IconLock, IconShield, IconCheck, IconArrowRight, IconPhone, IconTruck } from './Icons';
 import PaymentCardForm from './PaymentCardForm';
 import { BRAND_LABELS, detectBrand, onlyDigits, validateCard } from './cardUtils';
-import { saveOrder } from '../utils/orders';
 import { formatOrderId, formatPrice } from '../utils/format';
 import { orderService } from '../services/order.service';
 import styles from './CheckoutModal.module.css';
@@ -135,7 +134,6 @@ export default function CheckoutModal({
         change: payment === 'cash' ? change : 0,
       };
       setReceipt(newReceipt);
-      saveOrder(newReceipt);
       onOrderPlaced?.(newReceipt);
       setCard(EMPTY_CARD);
       clearCart();
