@@ -120,6 +120,7 @@ class ProductUpdate(ProductCreate):
 class ProductResponse(ProductBase):
     id: int
     is_active: bool = True
+    units_sold: int = 0  # solo lo calcula el catálogo público
 
     model_config = ConfigDict(from_attributes=True)
 

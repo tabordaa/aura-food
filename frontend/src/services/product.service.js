@@ -2,8 +2,9 @@ import { fetchWithAuth } from './api';
 
 export const productService = {
   // Catálogo público (solo productos activos)
-  async getAllProducts() {
-    return fetchWithAuth('/api/products');
+  // sort = 'best_sellers' entrega primero los más vendidos (cada producto trae units_sold)
+  async getAllProducts(sort) {
+    return fetchWithAuth(sort ? `/api/products?sort=${sort}` : '/api/products');
   },
 
   // Panel admin: incluye los desactivados
