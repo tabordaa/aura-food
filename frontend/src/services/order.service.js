@@ -28,6 +28,14 @@ export const orderService = {
     return fetchWithAuth(`/api/orders/${id}/cancel`, { method: 'POST' });
   },
 
+  // Solo admin: rechaza un pedido pendiente; el cliente verá el motivo
+  async rejectOrder(id, reason) {
+    return fetchWithAuth(`/api/orders/${id}/reject`, {
+      method: 'POST',
+      body: JSON.stringify({ reason }),
+    });
+  },
+
   // Solo para admin y domiciliario
   async getOrders(status) {
     const query = status ? `?status=${encodeURIComponent(status)}` : '';
