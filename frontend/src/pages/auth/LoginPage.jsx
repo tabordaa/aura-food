@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate, Navigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, Navigate, useSearchParams } from 'react-router';
 import { useAuth } from '../../context/AuthContext';
 import { IconCart, IconMail, IconLock, IconEye, IconEyeOff, IconArrowRight, IconShield, IconGoogle } from '../../components/Icons';
 import styles from './Auth.module.css';

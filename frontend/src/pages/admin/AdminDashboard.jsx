@@ -66,17 +66,15 @@ export default function AdminDashboard() {
   const [confirmRejectId, setConfirmRejectId] = useState(null);
   const [toast, setToast] = useState(null);
 
-  const loadOrders = useCallback(async () => {
-    try {
-      setOrders(await orderService.getOrders());
+  // Los setState ocurren en los callbacks de la promesa (cuando llega la respuesta), no al llamar la función
+  const loadOrders = useCallback(() => orderService.getOrders()
+    .then(list => {
+      setOrders(list);
       setOnline(true);
       setLastUpdate(new Date());
-    } catch {
-      setOnline(false);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+    })
+    .catch(() => setOnline(false))
+    .finally(() => setLoading(false)), []);
 
   // Carga inicial y refresco automático para ver los pedidos que van entrando
   useEffect(() => {

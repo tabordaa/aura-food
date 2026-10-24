@@ -1,31 +1,28 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 import { authService } from '../services/auth.service';
 import { AUTH_EXPIRED_EVENT } from '../services/api';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router';
 
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
+  // Solo hay algo que cargar si quedó un token guardado de una sesión anterior
+  const [loading, setLoading] = useState(() => Boolean(localStorage.getItem('token')));
   const navigate = useNavigate();
 
   useEffect(() => {
     // Intentar recuperar el usuario si hay un token en localStorage
-    const token = localStorage.getItem('token');
-    if (token) {
-      authService.getMe()
-        .then(userData => {
-          setUser(userData);
-        })
-        .catch(() => {
-          localStorage.removeItem('token');
-          setUser(null);
-        })
-        .finally(() => setLoading(false));
-    } else {
-      setLoading(false);
-    }
+    if (!localStorage.getItem('token')) return;
+    authService.getMe()
+      .then(userData => {
+        setUser(userData);
+      })
+      .catch(() => {
+        localStorage.removeItem('token');
+        setUser(null);
+      })
+      .finally(() => setLoading(false));
   }, []);
 
   // Si el backend responde 401 (token vencido o inválido) se cierra la sesión y se vuelve al login

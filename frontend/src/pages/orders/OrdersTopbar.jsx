@@ -1,4 +1,4 @@
-import { Link, NavLink } from 'react-router-dom';
+import { Link, NavLink } from 'react-router';
 import { IconCart } from '../../components/Icons';
 import styles from './Orders.module.css';
 
