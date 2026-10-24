@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate, Navigate } from 'react-router-dom';
+import { useNavigate, Navigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { IconCart, IconMail, IconLock, IconEye, IconEyeOff, IconArrowRight, IconShield, IconGoogle } from '../../components/Icons';
 import styles from './Auth.module.css';
@@ -11,6 +11,8 @@ export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [searchParams] = useSearchParams();
+  const sessionExpired = searchParams.get('expired') === '1';
 
   // Redirigir si ya está logueado
   if (user) {
@@ -50,6 +52,11 @@ export default function LoginPage() {
 
           <form onSubmit={handleSubmit}>
             {error && <div style={{ color: 'red', marginBottom: '1rem', fontSize: '0.875rem' }}>{error}</div>}
+            {!error && sessionExpired && (
+              <div style={{ color: 'var(--text-secondary)', marginBottom: '1rem', fontSize: '0.875rem' }}>
+                Tu sesión expiró. Inicia sesión de nuevo para continuar.
+              </div>
+            )}
             <div className={styles['form-group']}>
               <label htmlFor="login-email">Correo electrónico</label>
               <div className={styles['input-wrapper']}>

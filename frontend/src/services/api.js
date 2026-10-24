@@ -1,4 +1,7 @@
-import { API_URL } from '../utils/orders';
+export const API_URL = (import.meta.env.VITE_API_URL || 'http://localhost:8000').replace(/\/$/, '');
+
+// Evento que AuthContext escucha para cerrar la sesión cuando el token expira o deja de ser válido
+export const AUTH_EXPIRED_EVENT = 'auth:expired';
 
 // Mensajes legibles para los errores de validación (422) que devuelve FastAPI como lista
 const FIELD_MESSAGES = {
@@ -18,10 +21,11 @@ export function getErrorMessage(detail, fallback = 'Error en la petición') {
   return fallback;
 }
 
-// Wrapper básico de fetch para inyectar automáticamente el Bearer Token
+// Wrapper de fetch: inyecta el Bearer Token, traduce errores y avisa cuando la sesión expiró.
+// Los errores llevan `status` con el código HTTP para que cada pantalla decida qué mostrar.
 export async function fetchWithAuth(endpoint, options = {}) {
   const token = localStorage.getItem('token');
-  
+
   const headers = {
     'Content-Type': 'application/json',
     ...options.headers,
@@ -36,10 +40,18 @@ export async function fetchWithAuth(endpoint, options = {}) {
     headers,
   });
 
+  const text = await response.text();
+  const data = text ? JSON.parse(text) : null;
+
   if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}));
-    throw new Error(getErrorMessage(errorData.detail));
+    if (response.status === 401 && token) {
+      localStorage.removeItem('token');
+      window.dispatchEvent(new Event(AUTH_EXPIRED_EVENT));
+    }
+    const error = new Error(getErrorMessage(data?.detail));
+    error.status = response.status;
+    throw error;
   }
 
-  return response.json();
+  return data;
 }

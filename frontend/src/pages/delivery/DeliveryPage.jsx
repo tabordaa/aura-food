@@ -1,21 +1,11 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { IconCheck, IconMapPin, IconTruck } from '../../components/Icons';
+import { orderService } from '../../services/order.service';
 import styles from './Delivery.module.css';
 
-const API_URL = (import.meta.env.VITE_API_URL || 'http://localhost:8000').replace(/\/$/, '');
 const PICKUP_ADDRESS = import.meta.env.VITE_PICKUP_ADDRESS || 'Punto de recogida Aura Food';
 const ACTIVE_STATUSES = new Set(['preparado', 'asignado']);
-
-async function requestJson(path, options) {
-  const response = await fetch(`${API_URL}${path}`, options);
-  if (!response.ok) {
-    const detail = await response.text();
-    throw new Error(detail || `Error ${response.status} al comunicarse con el servidor.`);
-  }
-  const body = await response.text();
-  return body ? JSON.parse(body) : null;
-}
 
 function normalizeStatus(status) {
   return String(status || '').toLowerCase();
@@ -30,7 +20,7 @@ function getOrderList(payload) {
 }
 
 async function fetchDeliveryOrders() {
-  const orders = getOrderList(await requestJson('/api/orders'));
+  const orders = getOrderList(await orderService.getOrders());
   return orders
     .filter(order => ACTIVE_STATUSES.has(normalizeStatus(order.status)))
     .sort((first, second) => second.id - first.id);
@@ -133,11 +123,7 @@ export default function DeliveryPage() {
     setError('');
     setNotice('');
     try {
-      await requestJson(`/api/orders/${orderId}/status`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: 'entregado' }),
-      });
+      await orderService.updateStatus(orderId, 'entregado');
       setOrders(currentOrders => currentOrders.filter(order => order.id !== orderId));
       setNotice(`El pedido #${orderId} fue marcado como entregado.`);
     } catch (updateError) {
