@@ -1,39 +1,39 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useAuth } from '../../hooks/useAuth';
-import { IconCheck, IconMapPin, IconTruck } from '../../components/Icons';
+import { IconCheck, IconMapPin, IconPhone, IconTruck } from '../../components/Icons';
 import { orderService } from '../../services/order.service';
-import { formatOrderId, formatPrice } from '../../utils/format';
+import { formatOrderId, formatPrice, parseServerDate } from '../../utils/format';
 import styles from './Delivery.module.css';
 
 const PICKUP_ADDRESS = import.meta.env.VITE_PICKUP_ADDRESS || 'Punto de recogida Aura Food';
-const ACTIVE_STATUSES = new Set(['preparado', 'asignado']);
+const REFRESH_MS = 20000;
 
-function normalizeStatus(status) {
-  return String(status || '').toLowerCase();
+const TABS = [
+  { id: 'available', label: 'Disponibles' },
+  { id: 'active',    label: 'En curso' },
+  { id: 'history',   label: 'Historial' },
+];
+
+const STATUS_LABELS = {
+  preparado: 'Listo para recoger',
+  asignado:  'En camino',
+  entregado: 'Entregado',
+};
+
+const EMPTY_STATES = {
+  available: { title: 'No hay pedidos por recoger', text: 'Cuando la tienda prepare un pedido aparecerá aquí para que lo tomes.' },
+  active:    { title: 'No tienes entregas en curso', text: 'Toma un pedido de la pestaña "Disponibles" para empezar.' },
+  history:   { title: 'Aún no has entregado pedidos', text: 'Tus entregas completadas quedarán registradas aquí.' },
+};
+
+function formatDeliveredAt(value) {
+  if (!value) return '';
+  return parseServerDate(value).toLocaleString('es-CO', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' });
 }
 
-function getOrderList(payload) {
-  const orders = Array.isArray(payload) ? payload : payload?.items;
-  if (!Array.isArray(orders)) {
-    throw new Error('La respuesta de pedidos no tiene el formato esperado.');
-  }
-  return orders;
-}
-
-async function fetchDeliveryOrders() {
-  const orders = getOrderList(await orderService.getOrders());
-  return orders
-    .filter(order => ACTIVE_STATUSES.has(normalizeStatus(order.status)))
-    .sort((first, second) => second.id - first.id);
-}
-
-function OrderCard({ order, isUpdating, onMarkDelivered }) {
-  const status = normalizeStatus(order.status);
-  const itemCount = Array.isArray(order.items)
-    ? order.items.reduce((total, item) => total + (Number(item.quantity) || 0), 0)
-    : 0;
-  const pickupAddress = order.pickup_address || order.pickup_location || PICKUP_ADDRESS;
-  const deliveryAddress = order.delivery_address || order.address || 'Dirección no disponible';
+function OrderCard({ order, mode, isUpdating, onAction }) {
+  const itemCount = order.items.reduce((total, item) => total + item.quantity, 0);
+  const cash = order.payment_method === 'cash';
 
   return (
     <article className={styles['order-card']}>
@@ -42,19 +42,19 @@ function OrderCard({ order, isUpdating, onMarkDelivered }) {
           <span className={styles['order-label']}>Pedido</span>
           <h2>{formatOrderId(order.id)}</h2>
         </div>
-        <span className={`${styles['status']} ${styles[`status-${status}`]}`}>
-          {status === 'preparado' ? 'Preparado' : 'Asignado'}
+        <span className={`${styles.status} ${styles[`status-${order.status}`]}`}>
+          {STATUS_LABELS[order.status] ?? order.status}
         </span>
       </div>
 
-      <div className={styles['route']}>
+      <div className={styles.route}>
         <div className={styles['route-stop']}>
           <span className={`${styles['route-icon']} ${styles['pickup-icon']}`}>
             <IconMapPin size={18} />
           </span>
           <div>
             <span className={styles['route-label']}>Recoger en</span>
-            <p>{pickupAddress}</p>
+            <p>{PICKUP_ADDRESS}</p>
           </div>
         </div>
         <div className={styles['route-line']} />
@@ -64,113 +64,167 @@ function OrderCard({ order, isUpdating, onMarkDelivered }) {
           </span>
           <div>
             <span className={styles['route-label']}>Entregar en</span>
-            <p>{deliveryAddress}</p>
+            <p>{order.delivery_address}</p>
           </div>
         </div>
       </div>
 
+      {mode === 'active' && (order.phone || order.notes) && (
+        <div className={styles['order-extra']}>
+          {order.phone && (
+            <a className={styles['phone-link']} href={`tel:${order.phone}`}>
+              <IconPhone size={14} /> {order.phone}
+            </a>
+          )}
+          {order.notes && <p className={styles.notes}>“{order.notes}”</p>}
+        </div>
+      )}
+
       <div className={styles['order-meta']}>
-        <span>{itemCount} {itemCount === 1 ? 'producto' : 'productos'}</span>
+        <span>
+          {itemCount} {itemCount === 1 ? 'producto' : 'productos'}
+          {mode !== 'history' && (cash ? ' · Cobrar en efectivo' : ' · Ya pagado')}
+        </span>
         <strong>{formatPrice(order.total_price)}</strong>
       </div>
 
-      <button
-        className={styles['deliver-button']}
-        type="button"
-        onClick={() => onMarkDelivered(order.id)}
-        disabled={isUpdating}
-      >
-        <IconCheck size={17} />
-        {isUpdating ? 'Actualizando...' : 'Marcar como Entregado'}
-      </button>
+      {mode === 'available' && (
+        <button className={styles['deliver-button']} type="button" onClick={() => onAction(order)} disabled={isUpdating}>
+          <IconTruck size={17} />
+          {isUpdating ? 'Tomando...' : 'Tomar pedido'}
+        </button>
+      )}
+      {mode === 'active' && (
+        <button className={styles['deliver-button']} type="button" onClick={() => onAction(order)} disabled={isUpdating}>
+          <IconCheck size={17} />
+          {isUpdating ? 'Actualizando...' : 'Marcar como entregado'}
+        </button>
+      )}
+      {mode === 'history' && (
+        <p className={styles['delivered-at']}>
+          <IconCheck size={14} /> Entregado el {formatDeliveredAt(order.delivered_at)}
+        </p>
+      )}
     </article>
   );
 }
 
 export default function DeliveryPage() {
   const { user, logout } = useAuth();
-  const [orders, setOrders] = useState([]);
+  const [groups, setGroups] = useState({ available: [], active: [], history: [] });
+  const [tab, setTab] = useState('available');
   const [loading, setLoading] = useState(true);
   const [updatingOrderId, setUpdatingOrderId] = useState(null);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
 
-  const loadOrders = useCallback(() => fetchDeliveryOrders()
-    .then(setOrders)
+  const loadOrders = useCallback(() => orderService.getCourierOrders()
+    .then(data => { setGroups(data); setError(''); })
     .catch(loadError => setError(`No fue posible cargar los pedidos. ${loadError.message}`))
     .finally(() => setLoading(false)), []);
 
+  // Carga inicial y refresco automático para ver los pedidos que la tienda va preparando
   useEffect(() => {
     loadOrders();
+    const timer = setInterval(loadOrders, REFRESH_MS);
+    return () => clearInterval(timer);
   }, [loadOrders]);
 
   const refreshOrders = () => {
     setLoading(true);
-    setError('');
     loadOrders();
   };
 
-  const markAsDelivered = async (orderId) => {
-    setUpdatingOrderId(orderId);
+  const handleAction = async (order) => {
+    const taking = tab === 'available';
+    setUpdatingOrderId(order.id);
     setError('');
     setNotice('');
     try {
-      await orderService.updateStatus(orderId, 'entregado');
-      setOrders(currentOrders => currentOrders.filter(order => order.id !== orderId));
-      setNotice(`El pedido ${formatOrderId(orderId)} fue marcado como entregado.`);
-    } catch (updateError) {
-      setError(`No fue posible actualizar el pedido ${formatOrderId(orderId)}. ${updateError.message}`);
+      if (taking) {
+        await orderService.takeOrder(order.id);
+        setNotice(`Tomaste el pedido ${formatOrderId(order.id)}. Lo encuentras en "En curso".`);
+      } else {
+        await orderService.deliverOrder(order.id);
+        setNotice(`El pedido ${formatOrderId(order.id)} fue marcado como entregado.`);
+      }
+    } catch (actionError) {
+      setError(`No fue posible actualizar el pedido ${formatOrderId(order.id)}. ${actionError.message}`);
     } finally {
       setUpdatingOrderId(null);
+      // Se recarga siempre: si otro domiciliario lo tomó primero, desaparece de "Disponibles"
+      loadOrders();
     }
   };
 
+  const orders = groups[tab];
+  const empty = EMPTY_STATES[tab];
+
   return (
     <div className={styles['delivery-page']}>
-      <header className={styles['topbar']}>
-        <div className={styles['brand']}>
+      <header className={styles.topbar}>
+        <div className={styles.brand}>
           <span className={styles['brand-icon']}><IconTruck size={20} /></span>
           {import.meta.env.VITE_APP_NAME || 'Aura Food'} | Repartidor
         </div>
-        <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+        <div className={styles['topbar-actions']}>
           <span className={styles['role-label']}>{user?.name}</span>
-          <button onClick={logout} style={{ padding: '0.5rem 1rem', background: '#e2e8f0', border: 'none', borderRadius: '6px', cursor: 'pointer' }}>
+          <button type="button" className={styles['logout-button']} onClick={logout}>
             Cerrar sesión
           </button>
         </div>
       </header>
 
-      <main className={styles['content']}>
+      <main className={styles.content}>
         <div className={styles['page-heading']}>
           <div>
-            <p className={styles['eyebrow']}>OPERACIÓN DE ENTREGAS</p>
-            <h1>Pedidos por entregar</h1>
-            <p className={styles['subtitle']}>Recoge los pedidos preparados y llévalos a su destino.</p>
+            <p className={styles.eyebrow}>OPERACIÓN DE ENTREGAS</p>
+            <h1>Mis entregas</h1>
+            <p className={styles.subtitle}>Toma los pedidos preparados, llévalos a su destino y márcalos como entregados.</p>
           </div>
           <button className={styles['refresh-button']} type="button" onClick={refreshOrders} disabled={loading}>
             {loading ? 'Actualizando...' : 'Actualizar pedidos'}
           </button>
         </div>
 
+        <div className={styles.tabs} role="tablist">
+          {TABS.map(t => (
+            <button
+              key={t.id}
+              type="button"
+              role="tab"
+              aria-selected={tab === t.id}
+              className={[styles.tab, tab === t.id ? styles.active : ''].join(' ')}
+              onClick={() => setTab(t.id)}
+            >
+              {t.label}
+              {t.id === 'available' && groups.available.length > 0
+                ? <b className={styles['tab-alert']}>{groups.available.length}</b>
+                : <span className={styles['tab-count']}>({groups[t.id].length})</span>}
+            </button>
+          ))}
+        </div>
+
         {error && <p className={styles['feedback-error']} role="alert">{error}</p>}
         {notice && <p className={styles['feedback-success']} role="status">{notice}</p>}
 
-        {loading ? (
+        {loading && orders.length === 0 ? (
           <div className={styles['empty-state']} role="status">Cargando pedidos...</div>
         ) : orders.length === 0 ? (
           <div className={styles['empty-state']}>
             <span className={styles['empty-icon']}><IconTruck size={26} /></span>
-            <h2>No hay pedidos pendientes</h2>
-            <p>Los pedidos preparados o asignados aparecerán aquí.</p>
+            <h2>{empty.title}</h2>
+            <p>{empty.text}</p>
           </div>
         ) : (
-          <section className={styles['orders-grid']} aria-label="Pedidos preparados y asignados">
+          <section className={styles['orders-grid']} aria-label={TABS.find(t => t.id === tab).label}>
             {orders.map(order => (
               <OrderCard
                 key={order.id}
                 order={order}
+                mode={tab}
                 isUpdating={updatingOrderId === order.id}
-                onMarkDelivered={markAsDelivered}
+                onAction={handleAction}
               />
             ))}
           </section>

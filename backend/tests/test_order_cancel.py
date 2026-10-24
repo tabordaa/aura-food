@@ -70,4 +70,4 @@ def test_patch_status_cannot_reopen_cancelled_order(client, customer_headers, ad
         f"/api/orders/{placed_order['id']}/status", json={"status": "preparado"}, headers=admin_headers
     )
 
-    assert response.status_code == 400
+    assert response.status_code == 409

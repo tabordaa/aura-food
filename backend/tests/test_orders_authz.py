@@ -80,14 +80,14 @@ def test_courier_cannot_accept_pending_order(client, order, courier_headers):
     assert response.status_code == 403
 
 
-def test_courier_delivers_prepared_order(client, db, order, courier_headers):
+def test_courier_cannot_use_patch_shortcut(client, db, order, courier_headers):
+    # B9: antes un domiciliario podía pasar un pedido de preparado a entregado sin tomarlo
     order.status = models.OrderStatus.preparado
     db.commit()
 
     response = client.patch(f"/api/orders/{order.id}/status", json={"status": "entregado"}, headers=courier_headers)
 
-    assert response.status_code == 200
-    assert response.json()["status"] == "entregado"
+    assert response.status_code == 403
 
 
 def test_list_orders_supports_pagination(client, order, admin_headers):

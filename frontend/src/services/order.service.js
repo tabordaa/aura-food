@@ -42,6 +42,22 @@ export const orderService = {
     return fetchWithAuth(`/api/orders${query}`);
   },
 
+  // Solo domiciliario: pedidos disponibles, sus entregas en curso y su historial
+  async getCourierOrders() {
+    return fetchWithAuth('/api/orders/courier/me');
+  },
+
+  // El domiciliario toma un pedido preparado (409 si otro lo tomó primero)
+  async takeOrder(id) {
+    return fetchWithAuth(`/api/orders/${id}/take`, { method: 'POST' });
+  },
+
+  // Solo el domiciliario que tomó el pedido puede entregarlo
+  async deliverOrder(id) {
+    return fetchWithAuth(`/api/orders/${id}/deliver`, { method: 'POST' });
+  },
+
+  // Solo admin: acepta un pedido pendiente (pasa a preparado)
   async updateStatus(id, status) {
     return fetchWithAuth(`/api/orders/${id}/status`, {
       method: 'PATCH',
