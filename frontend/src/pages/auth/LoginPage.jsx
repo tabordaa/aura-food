@@ -2,15 +2,25 @@ import { useState } from 'react';
 import { useNavigate, Navigate, useSearchParams } from 'react-router';
 import { useAuth } from '../../hooks/useAuth';
 import { IconCart, IconMail, IconLock, IconEye, IconEyeOff, IconArrowRight, IconShield } from '../../components/Icons';
+import GoogleButton from '../../components/GoogleButton';
 import styles from './Auth.module.css';
 
 export default function LoginPage() {
   const navigate = useNavigate();
-  const { login, user } = useAuth();
+  const { login, user, loginWithGoogle } = useAuth();
   const [showPass, setShowPass] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+
+  const handleGoogle = async (credential) => {
+    setError('');
+    try {
+      await loginWithGoogle(credential);
+    } catch (err) {
+      setError(err instanceof TypeError ? 'Sin conexión con el servidor. Intenta de nuevo.' : err.message);
+    }
+  };
   const [searchParams] = useSearchParams();
   const sessionExpired = searchParams.get('expired') === '1';
 
@@ -80,6 +90,8 @@ export default function LoginPage() {
               Iniciar Sesión <IconArrowRight size={16} />
             </button>
           </form>
+
+          <GoogleButton label="o continúa con" onCredential={handleGoogle} />
 
           <div className={styles['auth-bottom-link']}>
             ¿No tienes cuenta?{' '}

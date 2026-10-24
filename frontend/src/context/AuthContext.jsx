@@ -36,14 +36,13 @@ export function AuthProvider({ children }) {
     return () => window.removeEventListener(AUTH_EXPIRED_EVENT, onExpired);
   }, [navigate]);
 
-  const login = async (email, password) => {
-    const data = await authService.login(email, password);
-    localStorage.setItem('token', data.access_token);
+  // Guarda la sesión y lleva a cada rol a su pantalla
+  const startSession = async (accessToken) => {
+    localStorage.setItem('token', accessToken);
     clearLegacyOrderStorage();
     const userData = await authService.getMe();
     setUser(userData);
-    
-    // Redirección basada en rol
+
     if (userData.role === 'admin') {
       navigate('/admin');
     } else if (userData.role === 'domiciliario') {
@@ -51,6 +50,16 @@ export function AuthProvider({ children }) {
     } else {
       navigate('/catalog');
     }
+  };
+
+  const login = async (email, password) => {
+    const data = await authService.login(email, password);
+    await startSession(data.access_token);
+  };
+
+  const loginWithGoogle = async (credential) => {
+    const data = await authService.loginWithGoogle(credential);
+    await startSession(data.access_token);
   };
 
   const register = async (userData) => {
@@ -78,7 +87,7 @@ export function AuthProvider({ children }) {
   if (loading) return <div>Cargando...</div>;
 
   return (
-    <AuthContext.Provider value={{ user, login, register, logout, updateProfile }}>
+    <AuthContext.Provider value={{ user, login, loginWithGoogle, register, logout, updateProfile }}>
       {children}
     </AuthContext.Provider>
   );
