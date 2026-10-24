@@ -11,4 +11,5 @@ def get_public_config():
     return {
         "delivery_fee": float(settings.get_delivery_fee()),
         "delivery_minutes": settings.get_delivery_minutes(),
+        "store": settings.get_store_location(),
     }

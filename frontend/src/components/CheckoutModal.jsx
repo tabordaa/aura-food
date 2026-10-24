@@ -5,6 +5,8 @@ import PaymentCardForm from './PaymentCardForm';
 import { BRAND_LABELS, detectBrand, onlyDigits, validateCard } from './cardUtils';
 import { formatOrderId, formatPrice } from '../utils/format';
 import { useAuth } from '../hooks/useAuth';
+import { useStoreConfig } from '../hooks/useStoreConfig';
+import { LocationPicker } from './maps/LazyMaps';
 import { orderService } from '../services/order.service';
 import styles from './CheckoutModal.module.css';
 
@@ -53,6 +55,10 @@ export default function CheckoutModal({
     phone: onlyDigits(user?.phone ?? '').slice(0, 10),
   }));
   const [saveToProfile, setSaveToProfile] = useState(true);
+  const [showMap, setShowMap] = useState(false);
+  const [location, setLocation] = useState(null);
+  // El mapa arranca centrado en la tienda (o en Bogotá mientras llega la configuración)
+  const mapCenter = useStoreConfig()?.store ?? { lat: 4.6486, lng: -74.0628 };
   const [payment, setPayment] = useState('card');
   const [card, setCard] = useState(EMPTY_CARD);
   const [cashWith, setCashWith] = useState('exact');
@@ -125,6 +131,7 @@ export default function CheckoutModal({
         notes: delivery.notes.trim(),
         payment_method: payment,
         items: cart.map(item => ({ product_id: item.id, quantity: item.qty })),
+        ...(location ? { delivery_lat: location.lat, delivery_lng: location.lng } : {}),
       });
 
       const brand = detectBrand(card.number);
@@ -319,6 +326,14 @@ export default function CheckoutModal({
                       disabled={busy}
                     />
                   </label>
+
+                  {showMap ? (
+                    <LocationPicker value={location} onChange={setLocation} center={mapCenter} disabled={busy} />
+                  ) : (
+                    <button type="button" className={styles['map-toggle']} onClick={() => setShowMap(true)} disabled={busy}>
+                      <IconMapPin size={14} /> Marcar el punto exacto en el mapa <em>(opcional, ayuda al domiciliario)</em>
+                    </button>
+                  )}
 
                   {differsFromProfile && (
                     <label className={styles['save-check']}>

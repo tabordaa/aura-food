@@ -29,6 +29,8 @@ def create_order(
         phone=order_in.phone,
         notes=order_in.notes,
         payment_method=order_in.payment_method,
+        delivery_lat=order_in.delivery_lat,
+        delivery_lng=order_in.delivery_lng,
         status=models.OrderStatus.pendiente,
         total_price=0,
     )

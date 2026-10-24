@@ -68,6 +68,7 @@ npm run dev
   (`ana.gomez@`, `carlos.rios@` y `valentina.mora@demo.aurafood.com`, contraseña `SEED_DEMO_PASSWORD`) y pedidos en
   todos los estados.
 - Cualquiera puede registrarse en `/register`; las cuentas nuevas siempre son de cliente.
+- Login con Google: opcional y apagado por defecto. Cómo activarlo en [backend/README.md](backend/README.md#login-con-google-opcional).
 
 Las credenciales de la BD compartida y de los usuarios de prueba **no** están en el repositorio: pídeselas al
 Tech Lead.

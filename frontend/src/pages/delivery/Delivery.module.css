@@ -278,6 +278,27 @@
   border-left: 1px dashed #b8cabb;
 }
 
+.order-map {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-bottom: 15px;
+}
+
+.directions-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  width: fit-content;
+  color: var(--primary);
+  font-size: 0.84rem;
+  font-weight: 700;
+}
+
+.directions-link:hover {
+  text-decoration: underline;
+}
+
 .order-extra {
   display: flex;
   flex-direction: column;

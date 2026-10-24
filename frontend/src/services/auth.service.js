@@ -30,6 +30,14 @@ export const authService = {
     });
   },
 
+  // Intercambia el ID token de Google por la sesión de Aura Food (crea la cuenta de cliente si no existe)
+  async loginWithGoogle(credential) {
+    return fetchWithAuth('/api/auth/google', {
+      method: 'POST',
+      body: JSON.stringify({ credential }),
+    });
+  },
+
   async getMe() {
     return fetchWithAuth('/api/auth/me');
   },

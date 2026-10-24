@@ -198,24 +198,11 @@
 }
 .btn-primary:active { transform: translateY(0); }
 
-.btn-google {
-  width: 100%;
-  padding: 12px;
-  background: #fff;
-  color: var(--text-primary);
-  font-size: 0.925rem;
-  font-weight: 500;
-  border-radius: var(--radius-xl);
-  border: 1.5px solid var(--border);
+/* Botón oficial de Google (lo dibuja Google Identity Services dentro de este contenedor) */
+.google-slot {
   display: flex;
-  align-items: center;
   justify-content: center;
-  gap: 10px;
-  transition: background var(--transition), box-shadow var(--transition);
-}
-.btn-google:hover {
-  background: #f8f8f8;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  min-height: 44px;
 }
 
 /* Divider */

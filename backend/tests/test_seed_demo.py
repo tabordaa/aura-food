@@ -59,3 +59,9 @@ def test_seed_demo_without_password_skips_customers(db, monkeypatch):
 
     assert db.query(models.User).count() == 0
     assert db.query(models.Order).count() == 0
+
+
+def test_seed_demo_orders_have_map_location(db, demo_password, courier):
+    seed_demo.seed_demo(db)
+
+    assert all(o.delivery_lat is not None and o.delivery_lng is not None for o in db.query(models.Order).all())
