@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, Navigate, useSearchParams } from 'react-router';
-import { useAuth } from '../../context/AuthContext';
-import { IconCart, IconMail, IconLock, IconEye, IconEyeOff, IconArrowRight, IconShield, IconGoogle } from '../../components/Icons';
+import { useAuth } from '../../hooks/useAuth';
+import { IconCart, IconMail, IconLock, IconEye, IconEyeOff, IconArrowRight, IconShield } from '../../components/Icons';
 import styles from './Auth.module.css';
 
 export default function LoginPage() {
@@ -76,17 +76,10 @@ export default function LoginPage() {
               </div>
             </div>
 
-            <div className={styles['forgot-row']}>
-              <a href="#forgot">¿Olvidaste tu contraseña?</a>
-            </div>
-
             <button type="submit" className={styles['btn-primary']}>
               Iniciar Sesión <IconArrowRight size={16} />
             </button>
           </form>
-
-          <div className={styles['divider']}>— o continúa con —</div>
-          <button className={styles['btn-google']} type="button"><IconGoogle size={18} /> Continuar con Google</button>
 
           <div className={styles['auth-bottom-link']}>
             ¿No tienes cuenta?{' '}
