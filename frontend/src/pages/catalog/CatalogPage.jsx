@@ -9,15 +9,18 @@ import ActiveOrderBanner from '../../components/ActiveOrderBanner';
 import { isActiveOrder } from '../../utils/orders';
 import { CATEGORIES } from '../../utils/categories';
 import { useAuth } from '../../hooks/useAuth';
+import { useCart } from '../../hooks/useCart';
 import { productService } from '../../services/product.service';
 import { orderService } from '../../services/order.service';
 import { configService } from '../../services/config.service';
 import styles from './Catalog.module.css';
 
-
-
-
 const FILTERS = ['Todos', 'Más vendidos', 'Ofertas del día', 'Orgánicos'];
+
+const isOnSale = (p) => p.old_price != null && p.old_price > p.price;
+// Sin tildes ni mayúsculas: "organico" encuentra "Orgánico"
+const normalize = (text) => text.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+const isOrganic = (p) => normalize([p.tag, p.origin, p.name].filter(Boolean).join(' ')).includes('organic');
 
 export default function CatalogPage() {
   const navigate = useNavigate();
@@ -25,22 +28,32 @@ export default function CatalogPage() {
   const [activeCategory, setActiveCategory] = useState('frutas');
   const [activeFilter, setActiveFilter] = useState('Todos');
   const [search, setSearch] = useState('');
-  const [cart, setCart] = useState([]);
   const [favorites, setFavorites] = useState([]);
   const [cartOpen, setCartOpen] = useState(false);
   const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [latestOrderId, setLatestOrderId] = useState(null);
   const [dbProducts, setDbProducts] = useState([]);
+  const [catalogState, setCatalogState] = useState('loading'); // loading | ready | error
+  const [notice, setNotice] = useState('');
   // Lo define el backend; null mientras carga
   const [deliveryFee, setDeliveryFee] = useState(null);
 
+  const { cart, qtyOf, addToCart: addEntry, changeQty, removeFromCart, clearCart } = useCart(user?.id, dbProducts);
+
+  // Los más vendidos llegan primero; cada filtro decide luego el orden
+  const loadProducts = useCallback(() => productService.getAllProducts('best_sellers')
+    .then(data => { setDbProducts(data); setCatalogState('ready'); })
+    .catch(() => setCatalogState('error')), []);
+
+  useEffect(() => { loadProducts(); }, [loadProducts]);
+
   useEffect(() => {
-    productService.getAllProducts()
-      .then(data => {
-        setDbProducts(data);
-      })
-      .catch(err => console.error('Error cargando catálogo:', err));
-  }, []);
+    if (!notice) return undefined;
+    const timer = setTimeout(() => setNotice(''), 3000);
+    return () => clearTimeout(timer);
+  }, [notice]);
+
+  const retryCatalog = () => { setCatalogState('loading'); loadProducts(); };
 
   useEffect(() => {
     configService.getConfig()
@@ -68,44 +81,42 @@ export default function CatalogPage() {
   const toggleFav = (id) => setFavorites(f => f.includes(id) ? f.filter(x => x !== id) : [...f, id]);
 
   const addToCart = (product) => {
-    setCart(c => {
-      const existing = c.find(x => x.id === product.id);
-      if (existing) return c.map(x => x.id === product.id ? { ...x, qty: x.qty + 1 } : x);
-      return [...c, { ...product, qty: 1 }];
-    });
+    if (!addEntry(product)) setNotice(`No hay más unidades disponibles de ${product.name}`);
   };
 
-  const removeFromCart = (id) => setCart(c => c.filter(x => x.id !== id));
-
-  const changeQty = (id, delta) => {
-    setCart(c => c
-      .map(x => x.id === id ? { ...x, qty: x.qty + delta } : x)
-      .filter(x => x.qty > 0)
-    );
-  };
-
+  // Al buscar se recorre todo el catálogo, no solo la categoría abierta
+  const term = normalize(search.trim());
   const filtered = dbProducts.filter(p => {
-    const matchCategory = p.category === activeCategory;
-    const matchSearch   = p.name.toLowerCase().includes(search.toLowerCase());
+    const matchCategory = term ? true : p.category === activeCategory;
+    const matchSearch   = !term || normalize([p.name, p.tag, p.origin].filter(Boolean).join(' ')).includes(term);
     const matchFilter   = activeFilter === 'Todos' ? true
-      : activeFilter === 'Ofertas del día' ? p.old_price !== null
-      : activeFilter === 'Orgánicos' ? p.tag === 'Orgánico'
+      : activeFilter === 'Más vendidos' ? p.units_sold > 0
+      : activeFilter === 'Ofertas del día' ? isOnSale(p)
+      : activeFilter === 'Orgánicos' ? isOrganic(p)
       : true;
     return matchCategory && matchSearch && matchFilter;
   });
+  // La API los entrega por unidades vendidas; fuera de "Más vendidos" se conserva el orden de siempre
+  if (activeFilter !== 'Más vendidos') filtered.sort((a, b) => a.id - b.id);
 
-  const activeCategoryLabel = CATEGORIES.find(c => c.id === activeCategory)?.label ?? '';
+  const activeCategoryLabel = term
+    ? `Resultados para "${search.trim()}"`
+    : CATEGORIES.find(c => c.id === activeCategory)?.label ?? '';
+  const emptyMessage = term
+    ? 'No encontramos productos con esa búsqueda. Prueba con otra palabra.'
+    : activeFilter === 'Todos' ? 'Pronto tendremos productos en esta categoría.'
+    : 'Ningún producto de esta categoría coincide con el filtro.';
 
   return (
     <>
       <div className={styles['catalog-page']}>
-        
-        <Navbar 
-          search={search} 
-          setSearch={setSearch} 
-          cartCount={cartCount} 
-          setCartOpen={setCartOpen} 
-          navigate={navigate} 
+
+        <Navbar
+          search={search}
+          setSearch={setSearch}
+          cartCount={cartCount}
+          setCartOpen={setCartOpen}
+          navigate={navigate}
         />
 
         <div className={styles['catalog-body']}>
@@ -159,31 +170,55 @@ export default function CatalogPage() {
             </div>
 
             {/* Product Grid */}
-            <div className={styles['product-grid']}>
-              {filtered.map(product => (
-                <ProductCard 
-                  key={product.id} 
-                  product={product} 
-                  favorites={favorites} 
-                  toggleFav={toggleFav} 
-                  addToCart={addToCart} 
-                />
-              ))}
-            </div>
+            {catalogState === 'loading' ? (
+              <div className={styles['catalog-state']} role="status">
+                <span className={styles.spinner} /> Cargando productos frescos…
+              </div>
+            ) : catalogState === 'error' ? (
+              <div className={styles['catalog-state']} role="alert">
+                <span className={styles['state-icon']}>📡</span>
+                <p>No pudimos cargar el catálogo. Revisa tu conexión e intenta de nuevo.</p>
+                <button type="button" className={styles['btn-secondary']} onClick={retryCatalog}>Reintentar</button>
+              </div>
+            ) : filtered.length === 0 ? (
+              <div className={styles['catalog-state']}>
+                <span className={styles['state-icon']}>🔎</span>
+                <p>{emptyMessage}</p>
+                {(term || activeFilter !== 'Todos') && (
+                  <button type="button" className={styles['btn-secondary']} onClick={() => { setSearch(''); setActiveFilter('Todos'); }}>
+                    Ver todos los productos
+                  </button>
+                )}
+              </div>
+            ) : (
+              <div className={styles['product-grid']}>
+                {filtered.map(product => (
+                  <ProductCard
+                    key={product.id}
+                    product={product}
+                    inCart={qtyOf(product.id)}
+                    favorites={favorites}
+                    toggleFav={toggleFav}
+                    addToCart={addToCart}
+                  />
+                ))}
+              </div>
+            )}
           </main>
         </div>
       </div>
 
-      <CartDrawer 
-        cartOpen={cartOpen} 
-        setCartOpen={setCartOpen} 
-        cart={cart} 
-        cartCount={cartCount} 
-        cartSubtotal={cartSubtotal} 
-        deliveryCost={deliveryCost} 
-        cartTotal={cartTotal} 
+      <CartDrawer
+        cartOpen={cartOpen}
+        setCartOpen={setCartOpen}
+        cart={cart}
+        cartCount={cartCount}
+        cartSubtotal={cartSubtotal}
+        deliveryCost={deliveryCost}
+        cartTotal={cartTotal}
         changeQty={changeQty}
         removeFromCart={removeFromCart}
+        notice={notice}
         onCheckout={() => { setCartOpen(false); setCheckoutOpen(true); }}
       />
 
@@ -195,8 +230,8 @@ export default function CatalogPage() {
         cartSubtotal={cartSubtotal}
         deliveryCost={deliveryCost}
         cartTotal={cartTotal}
-        clearCart={() => setCart([])}
-        onOrderPlaced={(receipt) => setLatestOrderId(receipt.id)}
+        clearCart={clearCart}
+        onOrderPlaced={(receipt) => { setLatestOrderId(receipt.id); loadProducts(); }}
       />
     </>
   );

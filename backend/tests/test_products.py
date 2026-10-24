@@ -115,3 +115,32 @@ def test_admin_reactivates_product(client, admin_headers, products):
     client.put(f"/api/products/{products[0].id}", json=payload, headers=admin_headers)
 
     assert products[0].id in {p["id"] for p in client.get("/api/products").json()}
+
+
+def _sell(db, customer, product, quantity, status=models.OrderStatus.entregado):
+    order = models.Order(user_id=customer.id, total_price=1000, delivery_address="Calle 1", status=status)
+    order.items.append(models.OrderItem(product_id=product.id, quantity=quantity, price_at_purchase=product.price))
+    db.add(order)
+    db.commit()
+
+
+def test_catalog_reports_units_sold(client, db, customer, products):
+    _sell(db, customer, products[1], 3)
+    _sell(db, customer, products[1], 2, models.OrderStatus.pendiente)
+    _sell(db, customer, products[1], 9, models.OrderStatus.cancelado)  # no cuenta
+
+    body = {p["id"]: p["units_sold"] for p in client.get("/api/products").json()}
+
+    assert body == {products[0].id: 0, products[1].id: 5}
+
+
+def test_catalog_sorts_best_sellers_first(client, db, customer, products):
+    _sell(db, customer, products[1], 4)
+
+    ids = [p["id"] for p in client.get("/api/products?sort=best_sellers").json()]
+
+    assert ids == [products[1].id, products[0].id]
+
+
+def test_catalog_rejects_unknown_sort(client):
+    assert client.get("/api/products?sort=precio").status_code == 422
