@@ -21,7 +21,8 @@ def test_create_order_uses_database_prices_and_discounts_stock(client, db, custo
 
     assert response.status_code == 201, response.text
     body = response.json()
-    assert body["total_price"] == 9000
+    assert body["delivery_fee"] == 5000
+    assert body["total_price"] == 9000 + 5000
     assert body["status"] == "pendiente"
     assert body["user_id"] == customer.id
     assert body["phone"] == "3001234567"
@@ -75,3 +76,18 @@ def test_create_order_validates_input(client, customer_headers, products, change
     response = client.post("/api/orders", json=payload, headers=customer_headers)
 
     assert response.status_code == 422
+
+
+def test_delivery_fee_is_configurable(client, customer_headers, products, monkeypatch):
+    monkeypatch.setenv("DELIVERY_FEE", "7000")
+
+    body = client.post("/api/orders", json=_order_payload(products, quantity=1), headers=customer_headers).json()
+
+    assert body["delivery_fee"] == 7000
+    assert body["total_price"] == 4500 + 7000
+
+
+def test_public_config_exposes_delivery_values(client, monkeypatch):
+    monkeypatch.setenv("DELIVERY_FEE", "6000")
+
+    assert client.get("/api/config").json() == {"delivery_fee": 6000, "delivery_minutes": 45}

@@ -125,9 +125,9 @@ export default function CheckoutModal({
         notes: delivery.notes.trim(),
         items: cart.map(item => ({ ...item })),
         subtotal: cartSubtotal,
-        deliveryCost,
-        // El backend todavía no suma el domicilio, así que mostramos el total que vio el cliente
-        total: cartTotal,
+        // Los montos finales son los que calculó el servidor
+        deliveryCost: resData.delivery_fee,
+        total: resData.total_price,
         paymentLabel: payment === 'card'
           ? `${BRAND_LABELS[brand]} •••• ${card.number.slice(-4)}`
           : 'Efectivo al recibir',
@@ -414,7 +414,7 @@ export default function CheckoutModal({
                 </div>
 
                 <div className={styles.row}><span>Subtotal</span><span>{formatPrice(cartSubtotal)}</span></div>
-                <div className={styles.row}><span>Domicilio</span><span>{formatPrice(deliveryCost)}</span></div>
+                <div className={styles.row}><span>Domicilio</span><span>{deliveryCost == null ? 'Calculando…' : formatPrice(deliveryCost)}</span></div>
                 <div className={styles.divider} />
                 <div className={styles['total-row']}>
                   <span>Total a pagar</span>

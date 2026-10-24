@@ -10,6 +10,7 @@ import { isActiveOrder } from '../../utils/orders';
 import { useAuth } from '../../hooks/useAuth';
 import { productService } from '../../services/product.service';
 import { orderService } from '../../services/order.service';
+import { configService } from '../../services/config.service';
 import styles from './Catalog.module.css';
 
 const CATEGORIES = [
@@ -36,6 +37,8 @@ export default function CatalogPage() {
   const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [latestOrderId, setLatestOrderId] = useState(null);
   const [dbProducts, setDbProducts] = useState([]);
+  // Lo define el backend; null mientras carga
+  const [deliveryFee, setDeliveryFee] = useState(null);
 
   useEffect(() => {
     productService.getAllProducts()
@@ -43,6 +46,12 @@ export default function CatalogPage() {
         setDbProducts(data);
       })
       .catch(err => console.error('Error cargando catálogo:', err));
+  }, []);
+
+  useEffect(() => {
+    configService.getConfig()
+      .then(config => setDeliveryFee(config.delivery_fee))
+      .catch(() => {});
   }, []);
 
   // Muestra el aviso de seguimiento si el cliente tiene un pedido en curso
@@ -57,8 +66,8 @@ export default function CatalogPage() {
 
   const cartCount = cart.reduce((acc, item) => acc + item.qty, 0);
   const cartSubtotal = cart.reduce((acc, item) => acc + item.price * item.qty, 0);
-  const deliveryCost = cartSubtotal > 0 ? 5000 : 0;
-  const cartTotal = cartSubtotal + deliveryCost;
+  const deliveryCost = cartSubtotal > 0 ? deliveryFee : 0;
+  const cartTotal = cartSubtotal + (deliveryCost || 0);
 
   const closeCheckout = useCallback(() => setCheckoutOpen(false), []);
 
