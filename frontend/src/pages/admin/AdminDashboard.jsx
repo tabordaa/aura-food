@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { IconCheck, IconMapPin, IconSearch } from '../../components/Icons';
 
@@ -54,7 +53,6 @@ function describeItems(items) {
 }
 
 export default function AdminDashboard() {
-  const navigate = useNavigate();
   const { user, logout } = useAuth();
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
