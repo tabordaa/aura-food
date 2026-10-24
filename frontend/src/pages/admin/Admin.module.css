@@ -448,6 +448,24 @@
 .btn-ghost { background: none; color: var(--text-secondary); border: 1.5px solid var(--border); }
 .btn-ghost:hover:not(:disabled) { background: var(--input-bg); }
 .actions button:disabled, .confirm button:disabled { opacity: 0.6; cursor: progress; }
+.confirm .btn-danger:disabled { cursor: not-allowed; }
+/* Mismo estilo que el buscador del panel, en tamaño compacto para la tabla */
+form.confirm { flex-wrap: wrap; }
+.reason-input {
+  /* Ocupa el ancho de la columna de acciones; los botones bajan a la siguiente línea */
+  flex: 1 0 100%;
+  min-width: 0;
+  padding: 7px 12px;
+  border-radius: var(--radius-xl);
+  background: var(--input-bg);
+  border: 1.5px solid var(--border);
+  font: inherit;
+  font-size: 0.8rem;
+  color: var(--text-primary);
+  outline: none;
+  transition: border-color var(--transition);
+}
+.reason-input:focus { border-color: var(--input-focus); }
 
 /* ---------- Pagination ---------- */
 .pagination {

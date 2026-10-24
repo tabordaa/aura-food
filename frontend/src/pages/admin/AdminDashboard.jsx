@@ -66,6 +66,7 @@ export default function AdminDashboard() {
   const [page, setPage] = useState(1);
   const [busyId, setBusyId] = useState(null);
   const [confirmRejectId, setConfirmRejectId] = useState(null);
+  const [rejectReason, setRejectReason] = useState('');
   const [toast, setToast] = useState(null);
 
   // Los setState ocurren en los callbacks de la promesa (cuando llega la respuesta), no al llamar la función
@@ -92,29 +93,32 @@ export default function AdminDashboard() {
   }, [toast]);
 
   async function changeStatus(order, status) {
+    const rejecting = status === 'rechazado';
     setBusyId(order.id);
-    setConfirmRejectId(null);
     try {
-      const updated = await orderService.updateStatus(order.id, status);
+      const updated = rejecting
+        ? await orderService.rejectOrder(order.id, rejectReason.trim())
+        : await orderService.updateStatus(order.id, status);
       setOrders(list => list.map(o => (o.id === updated.id ? updated : o)));
+      setConfirmRejectId(null);
+      setRejectReason('');
       setToast({
-        type: status === 'rechazado' ? 'warning' : 'success',
-        text: status === 'rechazado'
-          ? `Pedido ${formatOrderId(order.id)} rechazado`
+        type: rejecting ? 'warning' : 'success',
+        text: rejecting
+          ? `Pedido ${formatOrderId(order.id)} rechazado: el cliente verá el motivo`
           : `Pedido ${formatOrderId(order.id)} aceptado: pasa a preparación`,
       });
     } catch (err) {
-      const unsupported = status === 'rechazado' && err.status === 422;
       setToast({
         type: 'error',
-        text: unsupported
-          ? 'El backend todavía no permite rechazar pedidos (falta el estado "rechazado").'
-          : err instanceof TypeError ? 'Sin conexión con el servidor. Intenta de nuevo.' : err.message,
+        text: err instanceof TypeError ? 'Sin conexión con el servidor. Intenta de nuevo.' : err.message,
       });
     } finally {
       setBusyId(null);
     }
   }
+
+  const openReject = (orderId) => { setConfirmRejectId(orderId); setRejectReason(''); };
 
   const now = new Date();
   const counts = useMemo(() => {
@@ -327,17 +331,31 @@ export default function AdminDashboard() {
                         {order.status !== 'pendiente' ? (
                           <span className={styles.muted}>—</span>
                         ) : confirmRejectId === order.id ? (
-                          <div className={styles.confirm}>
-                            <span>¿Rechazar?</span>
-                            <button type="button" className={styles['btn-danger']} onClick={() => changeStatus(order, 'rechazado')} disabled={busy}>Sí</button>
+                          <form
+                            className={styles.confirm}
+                            onSubmit={e => { e.preventDefault(); if (rejectReason.trim().length >= 3) changeStatus(order, 'rechazado'); }}
+                          >
+                            <input
+                              className={styles['reason-input']}
+                              placeholder="Motivo (lo verá el cliente)"
+                              aria-label="Motivo del rechazo"
+                              value={rejectReason}
+                              onChange={e => setRejectReason(e.target.value)}
+                              maxLength={300}
+                              disabled={busy}
+                              autoFocus
+                            />
+                            <button type="submit" className={styles['btn-danger']} disabled={busy || rejectReason.trim().length < 3}>
+                              {busy ? '…' : 'Rechazar'}
+                            </button>
                             <button type="button" className={styles['btn-ghost']} onClick={() => setConfirmRejectId(null)} disabled={busy}>No</button>
-                          </div>
+                          </form>
                         ) : (
                           <div className={styles.actions}>
                             <button type="button" className={styles['btn-accept']} onClick={() => changeStatus(order, 'preparado')} disabled={busy}>
                               {busy ? '…' : <><IconCheck size={13} /> Aceptar</>}
                             </button>
-                            <button type="button" className={styles['btn-reject']} onClick={() => setConfirmRejectId(order.id)} disabled={busy}>
+                            <button type="button" className={styles['btn-reject']} onClick={() => openReject(order.id)} disabled={busy}>
                               ✕ Rechazar
                             </button>
                           </div>

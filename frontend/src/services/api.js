@@ -15,6 +15,7 @@ const FIELD_MESSAGES = {
   quantity: 'Cada producto admite entre 1 y 99 unidades',
   items: 'El pedido debe tener entre 1 y 50 productos',
   payment_method: 'Selecciona un método de pago válido',
+  reason: 'Escribe el motivo del rechazo (mínimo 3 caracteres)',
 };
 
 export function getErrorMessage(detail, fallback = 'Error en la petición') {

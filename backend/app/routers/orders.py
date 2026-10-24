@@ -224,3 +224,23 @@ def cancel_order(
     db.commit()
     db.refresh(order)
     return order
+
+
+@router.post("/{order_id}/reject", response_model=schemas.OrderResponse)
+def reject_order(
+    order_id: int,
+    reject_in: schemas.OrderReject,
+    db: Session = Depends(get_db),
+    _: models.User = Depends(oauth2.require_roles(models.RoleEnum.admin)),
+):
+    """La tienda rechaza un pedido pendiente indicando el motivo; el stock vuelve al inventario."""
+    order = get_order_or_404(order_id, db, lock=True)
+    if order.status != models.OrderStatus.pendiente:
+        raise HTTPException(status_code=409, detail="Solo se pueden rechazar pedidos pendientes")
+
+    restock_order_items(order, db)
+    order.status = models.OrderStatus.rechazado
+    order.rejection_reason = reject_in.reason
+    db.commit()
+    db.refresh(order)
+    return order

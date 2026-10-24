@@ -93,6 +93,18 @@ class OrderCreate(OrderBase):
 class OrderStatusUpdate(BaseModel):
     status: OrderStatus
 
+class OrderReject(BaseModel):
+    # El cliente ve este motivo en el seguimiento de su pedido
+    reason: str = Field(min_length=3, max_length=300)
+
+    @field_validator("reason")
+    @classmethod
+    def strip_reason(cls, value: str) -> str:
+        value = value.strip()
+        if len(value) < 3:
+            raise ValueError("Escribe el motivo del rechazo")
+        return value
+
 class UserSummary(BaseModel):
     id: int
     name: str | None = None
