@@ -59,3 +59,18 @@ def login(user_credentials: OAuth2PasswordRequestForm = Depends(), db: Session =
 @router.get("/me", response_model=schemas.UserResponse)
 def get_current_user(current_user: models.User = Depends(oauth2.get_current_user)):
     return current_user
+
+
+@router.patch("/me", response_model=schemas.UserResponse)
+def update_current_user(
+    changes: schemas.UserUpdate,
+    db: Session = Depends(database.get_db),
+    current_user: models.User = Depends(oauth2.get_current_user),
+):
+    # Solo se tocan los campos que vinieron en la petición; el esquema no tiene email, rol ni contraseña,
+    # así que aunque el cliente los envíe se ignoran (evita mass assignment)
+    for field, value in changes.model_dump(exclude_unset=True).items():
+        setattr(current_user, field, value)
+    db.commit()
+    db.refresh(current_user)
+    return current_user

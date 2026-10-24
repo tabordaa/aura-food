@@ -50,6 +50,7 @@
   color: var(--text-secondary);
   transition: all var(--transition);
 }
+.top-link { white-space: nowrap; }
 .top-link:hover { background: var(--primary-light); color: var(--primary); }
 .top-link.active { background: var(--primary); color: #fff; }
 
@@ -454,4 +455,14 @@
   .order-info { flex-basis: calc(100% - 90px); }
   .order-arrow { display: none; }
   .actions { flex-direction: column; }
+}
+
+/* Barra superior en celulares: tres enlaces deben caber sin partirse */
+@media (max-width: 640px) {
+  .topbar { padding: 0 14px; }
+  .top-links { gap: 2px; }
+  .top-link { padding: 7px 10px; font-size: 0.82rem; }
+}
+@media (max-width: 420px) {
+  .top-brand-name { display: none; }
 }
