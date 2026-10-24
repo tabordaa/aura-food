@@ -102,21 +102,20 @@ export default function DeliveryPage() {
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
 
-  const loadOrders = useCallback(async () => {
-    setLoading(true);
-    setError('');
-    try {
-      setOrders(await fetchDeliveryOrders());
-    } catch (loadError) {
-      setError(`No fue posible cargar los pedidos. ${loadError.message}`);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const loadOrders = useCallback(() => fetchDeliveryOrders()
+    .then(setOrders)
+    .catch(loadError => setError(`No fue posible cargar los pedidos. ${loadError.message}`))
+    .finally(() => setLoading(false)), []);
 
   useEffect(() => {
     loadOrders();
   }, [loadOrders]);
+
+  const refreshOrders = () => {
+    setLoading(true);
+    setError('');
+    loadOrders();
+  };
 
   const markAsDelivered = async (orderId) => {
     setUpdatingOrderId(orderId);
@@ -155,7 +154,7 @@ export default function DeliveryPage() {
             <h1>Pedidos por entregar</h1>
             <p className={styles['subtitle']}>Recoge los pedidos preparados y llévalos a su destino.</p>
           </div>
-          <button className={styles['refresh-button']} type="button" onClick={loadOrders} disabled={loading}>
+          <button className={styles['refresh-button']} type="button" onClick={refreshOrders} disabled={loading}>
             {loading ? 'Actualizando...' : 'Actualizar pedidos'}
           </button>
         </div>

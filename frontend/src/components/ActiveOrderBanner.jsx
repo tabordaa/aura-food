@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router';
 import useOrderStatus from '../hooks/useOrderStatus';
 import { ORDER_STEPS, formatOrderId, stepIndex } from '../utils/orders';
 import styles from '../pages/catalog/Catalog.module.css';

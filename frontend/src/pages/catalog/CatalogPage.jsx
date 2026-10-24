@@ -1,5 +1,5 @@
 import { useCallback, useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router';
 import { IconTruck, IconBolt, IconCheck } from '../../components/Icons';
 import Navbar from '../../components/Navbar';
 import ProductCard from '../../components/ProductCard';

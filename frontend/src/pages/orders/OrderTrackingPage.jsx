@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useParams } from 'react-router';
 import { IconMapPin, IconPhone, IconCheck } from '../../components/Icons';
 import useOrderStatus from '../../hooks/useOrderStatus';
 import {

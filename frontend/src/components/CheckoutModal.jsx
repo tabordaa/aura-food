@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router';
 import { IconMapPin, IconLock, IconShield, IconCheck, IconArrowRight, IconPhone, IconTruck } from './Icons';
 import PaymentCardForm from './PaymentCardForm';
 import { BRAND_LABELS, detectBrand, onlyDigits, validateCard } from './cardUtils';
