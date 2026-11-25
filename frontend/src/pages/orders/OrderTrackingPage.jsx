@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router';
 import { IconMapPin, IconPhone, IconCheck } from '../../components/Icons';
 import { OrderMap } from '../../components/maps/LazyMaps';
@@ -9,7 +9,9 @@ import {
   CLOSED_STATUSES, ORDER_STEPS, DELIVERY_MINUTES, PAYMENT_LABELS, stepIndex, formatPrice, formatOrderId, parseServerDate,
 } from '../../utils/orders';
 import { toLocation } from '../../utils/location';
+import { launchConfetti } from '../../utils/motion';
 import OrdersTopbar from './OrdersTopbar';
+import OrderTimeline from './OrderTimeline';
 import styles from './Orders.module.css';
 
 const formatTime = (date) => date.toLocaleTimeString('es-CO', { hour: 'numeric', minute: '2-digit' });
@@ -19,13 +21,82 @@ function formatPhone(phone) {
   return digits.length === 10 ? `${digits.slice(0, 3)} ${digits.slice(3, 6)} ${digits.slice(6)}` : phone;
 }
 
+// Iconos y mensajes cercanos por estado para la línea de tiempo viva
+const TRACKING_META = {
+  pendiente: {
+    icon: '🧺',
+    headline: 'Recibimos tu pedido',
+    desc: 'La tienda ya recibió tu orden y pronto comenzará a prepararla',
+  },
+  preparado: {
+    icon: '📦',
+    headline: 'Estamos preparando tu pedido',
+    desc: 'Empacamos tus productos frescos y buscamos un domiciliario',
+  },
+  asignado: {
+    icon: '🛵',
+    headline: 'Tu pedido va en camino 🛵',
+    desc: 'Un domiciliario ya va rumbo a tu dirección',
+  },
+  entregado: {
+    icon: '✅',
+    headline: '¡Entregado! Que lo disfrutes',
+    desc: 'Tu pedido llegó a su destino. ¡Buen provecho!',
+  },
+};
+
+const TIMELINE_STEPS = ORDER_STEPS.map(step => ({
+  ...step,
+  icon: TRACKING_META[step.status]?.icon || step.icon,
+}));
+
 export default function OrderTrackingPage() {
   const { id } = useParams();
   const { order, loading, notFound, error, updatedAt, replaceOrder } = useOrderStatus(id);
   const [confirmCancel, setConfirmCancel] = useState(false);
   const [cancelling, setCancelling] = useState(false);
   const [actionError, setActionError] = useState('');
+  const [statusTracker, setStatusTracker] = useState({ orderId: null, status: null, poppedStatus: null });
+  const prevStatusRef = useRef({ orderId: null, status: null });
+  const celebratedOrderRef = useRef(null);
   const store = useStoreConfig()?.store;
+
+  const orderId = order?.id ?? null;
+  const orderStatus = order?.status ?? null;
+
+  // Detecta cambios de estado durante el polling para animar el nuevo paso con af-pop
+  if (orderId !== statusTracker.orderId || orderStatus !== statusTracker.status) {
+    const changedLive = (
+      orderId !== null
+      && orderId === statusTracker.orderId
+      && statusTracker.status !== null
+      && orderStatus !== statusTracker.status
+    );
+    setStatusTracker({
+      orderId,
+      status: orderStatus,
+      poppedStatus: changedLive ? orderStatus : null,
+    });
+  }
+
+  // Si pasa a entregado mientras el usuario mira la pantalla, celebra con confeti una sola vez
+  useEffect(() => {
+    if (!orderId || !orderStatus) return;
+    const prev = prevStatusRef.current;
+    const becameDelivered = (
+      prev.orderId === orderId
+      && prev.status !== null
+      && prev.status !== 'entregado'
+      && orderStatus === 'entregado'
+    );
+
+    if (becameDelivered && celebratedOrderRef.current !== orderId) {
+      celebratedOrderRef.current = orderId;
+      launchConfetti();
+    }
+
+    prevStatusRef.current = { orderId, status: orderStatus };
+  }, [orderId, orderStatus]);
 
   async function cancelOrder() {
     setCancelling(true);
@@ -42,7 +113,23 @@ export default function OrderTrackingPage() {
 
   let content;
   if (loading && !order) {
-    content = <div className={styles['state-card']}><span className={styles.spinner} /> Buscando tu pedido…</div>;
+    content = (
+      <div className={styles['skeleton-stack']} aria-busy="true" aria-label="Buscando tu pedido">
+        <div className={styles['skeleton-hero']}>
+          <div className={styles['skeleton-hero-main']}>
+            <div className={['skeleton', styles['sk-meta']].join(' ')} />
+            <div className={['skeleton', styles['sk-headline']].join(' ')} />
+            <div className={['skeleton', styles['sk-sub']].join(' ')} />
+          </div>
+          <div className={['skeleton', styles['sk-eta']].join(' ')} />
+        </div>
+        <div className={['skeleton', styles['sk-timeline']].join(' ')} />
+        <div className={styles.grid}>
+          <div className={['skeleton', styles['sk-panel']].join(' ')} />
+          <div className={['skeleton', styles['sk-panel']].join(' ')} />
+        </div>
+      </div>
+    );
   } else if (notFound) {
     content = (
       <div className={styles['state-card']}>
@@ -57,11 +144,17 @@ export default function OrderTrackingPage() {
   } else {
     const closed = CLOSED_STATUSES[order.status];
     const current = stepIndex(order.status);
-    const step = closed || ORDER_STEPS[current];
+    const meta = TRACKING_META[order.status];
+    const step = closed || TIMELINE_STEPS[current];
+    const headline = closed ? `Pedido ${closed.label.toLowerCase()}` : (meta?.headline || step.label);
+    const description = order.status === 'rechazado' && order.rejection_reason
+      ? order.rejection_reason
+      : (closed ? closed.desc : (meta?.desc || step.desc));
     const delivered = order.status === 'entregado';
     const finished = delivered || Boolean(closed);
     const createdAt = parseServerDate(order.created_at);
     const eta = new Date(createdAt.getTime() + DELIVERY_MINUTES * 60000);
+    const heroPopped = statusTracker.poppedStatus === order.status;
 
     const items = order.items.map(i => ({
       id: i.id,
@@ -76,22 +169,24 @@ export default function OrderTrackingPage() {
     content = (
       <>
         {/* Estado actual */}
-        <section className={[styles.hero, delivered ? styles.delivered : '', closed ? styles.closed : ''].join(' ')}>
+        <section className={[styles.hero, delivered ? styles.delivered : '', closed ? styles.closed : ''].filter(Boolean).join(' ')}>
           <div className={styles['hero-main']}>
             <p className={styles['hero-meta']}>
               Pedido <strong>{formatOrderId(order.id)}</strong> • Hecho a las {formatTime(createdAt)}
             </p>
-            <div className={styles['hero-status']}>
-              <span className={styles['hero-icon']}>{step.icon}</span>
+            <div key={order.status} className={styles['hero-status']}>
+              <span className={[styles['hero-icon'], heroPopped ? styles.popped : ''].filter(Boolean).join(' ')} aria-hidden="true">
+                {step.icon}
+              </span>
               <div>
-                <h1>{step.label}</h1>
-                <p>{order.status === 'rechazado' && order.rejection_reason ? order.rejection_reason : step.desc}</p>
+                <h1>{headline}</h1>
+                <p>{description}</p>
               </div>
             </div>
             <span className={styles.live}>
               {finished
                 ? (closed ? <>Pedido {closed.label.toLowerCase()}</> : <><IconCheck size={12} /> Pedido finalizado</>)
-                : <><span className={styles['live-dot']} /> En vivo • actualizado {updatedAt ? formatTime(updatedAt) : ''}</>}
+                : <><span className={styles['live-dot']} aria-hidden="true" /> En vivo • actualizado {updatedAt ? formatTime(updatedAt) : ''}</>}
             </span>
             {error && <p className={styles['hero-error']}>{error}</p>}
           </div>
@@ -104,24 +199,12 @@ export default function OrderTrackingPage() {
 
         {/* Progreso (solo para pedidos que siguen el flujo normal) */}
         {!closed && (
-          <section className={styles.panel}>
-            <ol className={styles.progress} style={{ '--progress': `${(current / (ORDER_STEPS.length - 1)) * 100}%` }}>
-              {ORDER_STEPS.map((s, i) => (
-                <li
-                  key={s.status}
-                  className={[
-                    styles['progress-step'],
-                    i < current || delivered ? styles.done : '',
-                    i === current && !delivered ? styles.current : '',
-                  ].join(' ')}
-                >
-                  <span className={styles['progress-dot']}>{i < current || delivered ? <IconCheck size={14} /> : s.icon}</span>
-                  <strong>{s.label}</strong>
-                  <small>{s.desc}</small>
-                </li>
-              ))}
-            </ol>
-          </section>
+          <OrderTimeline
+            steps={TIMELINE_STEPS}
+            current={current}
+            delivered={delivered}
+            poppedStatus={statusTracker.poppedStatus}
+          />
         )}
 
         {/* Mapa: solo si el cliente marcó el punto de entrega y el pedido sigue activo */}
