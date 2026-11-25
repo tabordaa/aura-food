@@ -75,3 +75,34 @@ input {
   outline: none;
 }
 
+
+/* =========================================
+   MOTION (base compartida para animaciones)
+   ========================================= */
+@keyframes af-fade-up   { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+@keyframes af-fade-in   { from { opacity: 0; } to { opacity: 1; } }
+@keyframes af-pop       { 0% { transform: scale(1); } 40% { transform: scale(1.3); } 100% { transform: scale(1); } }
+@keyframes af-pulse     { 0%, 100% { box-shadow: 0 0 0 0 rgba(27,94,53,0.35); } 50% { box-shadow: 0 0 0 8px rgba(27,94,53,0); } }
+@keyframes af-shimmer   { from { background-position: -400px 0; } to { background-position: 400px 0; } }
+@keyframes af-float     { 0%, 100% { transform: translateY(0) rotate(0deg); } 50% { transform: translateY(-18px) rotate(8deg); } }
+
+/* Transición al cambiar de ruta (ver PageTransition en App.jsx) */
+.page-transition { animation: af-fade-up 0.35s ease both; }
+
+/* Bloque de carga tipo skeleton: <div className="skeleton" style={{ height: 16 }} /> */
+.skeleton {
+  border-radius: var(--radius-sm);
+  background: linear-gradient(90deg, var(--primary-light) 0%, #F4FAF4 50%, var(--primary-light) 100%);
+  background-size: 800px 100%;
+  animation: af-shimmer 1.3s linear infinite;
+}
+
+/* Accesibilidad: quien pide menos movimiento no ve animaciones */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

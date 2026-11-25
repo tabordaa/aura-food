@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router';
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router';
 import { AuthProvider } from './context/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import LoginPage    from './pages/auth/LoginPage';
@@ -12,10 +12,17 @@ import ProfilePage from './pages/profile/ProfilePage';
 import AdminProducts from './pages/admin/AdminProducts';
 import DeliveryPage from './pages/delivery/DeliveryPage';
 
+// Re-monta el contenido al cambiar de ruta para disparar la animación de entrada (.page-transition)
+function PageTransition({ children }) {
+  const location = useLocation();
+  return <div key={location.pathname} className="page-transition">{children}</div>;
+}
+
 export default function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
+        <PageTransition>
         <Routes>
           <Route path="/"         element={<Navigate to="/login" replace />} />
           <Route path="/login"    element={<LoginPage />} />
@@ -31,6 +38,7 @@ export default function App() {
           <Route path="/admin/clientes" element={<ProtectedRoute allowedRoles={['admin']}><AdminClients /></ProtectedRoute>} />
           <Route path="/delivery" element={<ProtectedRoute allowedRoles={['domiciliario']}><DeliveryPage /></ProtectedRoute>} />
         </Routes>
+        </PageTransition>
       </AuthProvider>
     </BrowserRouter>
   );

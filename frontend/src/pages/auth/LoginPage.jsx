@@ -3,6 +3,7 @@ import { useNavigate, Navigate, useSearchParams } from 'react-router';
 import { useAuth } from '../../hooks/useAuth';
 import { IconCart, IconMail, IconLock, IconEye, IconEyeOff, IconArrowRight, IconShield } from '../../components/Icons';
 import GoogleButton from '../../components/GoogleButton';
+import DemoAccounts from '../../components/DemoAccounts';
 import styles from './Auth.module.css';
 
 export default function LoginPage() {
@@ -90,6 +91,8 @@ export default function LoginPage() {
               Iniciar Sesión <IconArrowRight size={16} />
             </button>
           </form>
+
+          <DemoAccounts onSelect={(demoEmail, demoPassword) => { setEmail(demoEmail); setPassword(demoPassword); setError(''); }} />
 
           <GoogleButton label="o continúa con" onCredential={handleGoogle} />
 

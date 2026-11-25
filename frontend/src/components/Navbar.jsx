@@ -24,7 +24,7 @@ export default function Navbar({ search, setSearch, cartCount, setCartOpen, navi
         <button className={styles['orders-btn']} onClick={() => navigate('/pedidos')} aria-label="Mis pedidos">
           <IconTruck size={17} /> <span>Mis pedidos</span>
         </button>
-        <button className={styles['cart-btn']} aria-label="Carrito" onClick={() => setCartOpen(true)}>
+        <button className={styles['cart-btn']} aria-label="Carrito" data-cart-target onClick={() => setCartOpen(true)}>
           <IconCart size={22} />
           {cartCount > 0 && <span className={styles['cart-badge']}>{cartCount}</span>}
         </button>
