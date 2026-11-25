@@ -8,6 +8,7 @@ import { useAuth } from '../hooks/useAuth';
 import { useStoreConfig } from '../hooks/useStoreConfig';
 import { LocationPicker } from './maps/LazyMaps';
 import { orderService } from '../services/order.service';
+import { launchConfetti } from '../utils/motion';
 import styles from './CheckoutModal.module.css';
 
 // Tiempo que dura la simulación de "aprobando pago con el banco"
@@ -57,8 +58,8 @@ export default function CheckoutModal({
   const [saveToProfile, setSaveToProfile] = useState(true);
   const [showMap, setShowMap] = useState(false);
   const [location, setLocation] = useState(null);
-  // El mapa arranca centrado en la tienda (o en Bogotá mientras llega la configuración)
-  const mapCenter = useStoreConfig()?.store ?? { lat: 4.6486, lng: -74.0628 };
+  // El mapa arranca centrado en la tienda (o en Medellín mientras llega la configuración)
+  const mapCenter = useStoreConfig()?.store ?? { lat: 6.2558, lng: -75.6047 };
   const [payment, setPayment] = useState('card');
   const [card, setCard] = useState(EMPTY_CARD);
   const [cashWith, setCashWith] = useState('exact');
@@ -152,6 +153,8 @@ export default function CheckoutModal({
         change: payment === 'cash' ? change : 0,
       };
       setReceipt(newReceipt);
+      // Celebración visual al confirmar el pedido (respeta prefers-reduced-motion)
+      launchConfetti();
       onOrderPlaced?.(newReceipt);
       // Si el cliente lo pidió, la dirección queda guardada para el próximo pedido (si falla, el pedido ya está hecho)
       if (saveToProfile && differsFromProfile) {
@@ -200,8 +203,14 @@ export default function CheckoutModal({
         {receipt ? (
           /* ---------- Pedido confirmado ---------- */
           <div className={styles.success}>
-            <div className={styles['success-icon']}><IconCheck size={34} /></div>
-            <h2>¡Tu pedido va en camino!</h2>
+            <div className={styles['success-icon']} aria-hidden="true">
+              <svg className={styles['success-svg']} viewBox="0 0 64 64" fill="none">
+                <circle className={styles['success-circle-bg']} cx="32" cy="32" r="27" />
+                <circle className={styles['success-circle']} cx="32" cy="32" r="27" />
+                <path className={styles['success-check']} d="M20 33 L28 41 L44 24" />
+              </svg>
+            </div>
+            <h2 className={styles['success-title']}>¡Pedido confirmado!</h2>
             <p className={styles['success-sub']}>
               Pedido <strong>{formatOrderId(receipt.id)}</strong> • Llega en <strong>35 - 45 min</strong>
             </p>
@@ -461,8 +470,14 @@ export default function CheckoutModal({
 
                 {error && <p className={styles.error} role="alert">{error}</p>}
 
-                <button className={styles['btn-confirm']} onClick={handleConfirm} disabled={busy || cart.length === 0}>
-                  {busy && <span className={styles.spinner} />}
+                <button
+                  type="button"
+                  className={[styles['btn-confirm'], busy ? styles['btn-busy'] : ''].join(' ')}
+                  onClick={handleConfirm}
+                  disabled={busy || cart.length === 0}
+                  aria-busy={busy}
+                >
+                  {busy && <span className={styles.spinner} aria-hidden="true" />}
                   {confirmLabel}
                 </button>
                 <p className={styles.secure}><IconShield size={13} /> Compra protegida • Garantía de frescura Aura</p>

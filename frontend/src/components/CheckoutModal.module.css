@@ -11,12 +11,7 @@
   align-items: center;
   justify-content: center;
   padding: 16px;
-  animation: fadeIn 0.2s ease;
-}
-
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to   { opacity: 1; }
+  animation: af-fade-in 0.2s ease both;
 }
 
 @keyframes popIn {
@@ -26,6 +21,18 @@
 
 @keyframes spin {
   to { transform: rotate(360deg); }
+}
+
+/* Dibujo progresivo del círculo y luego el ✓ en la confirmación */
+@keyframes drawCircle {
+  to { stroke-dashoffset: 0; }
+}
+@keyframes drawCheck {
+  to { stroke-dashoffset: 0; }
+}
+@keyframes fillSuccess {
+  from { opacity: 0; transform: scale(0.88); }
+  to   { opacity: 1; transform: scale(1); }
 }
 
 .modal {
@@ -139,6 +146,7 @@
   align-items: center;
   gap: 14px;
   margin-bottom: 20px;
+  animation: af-fade-up 0.3s ease 0.04s both;
 }
 .title-icon {
   width: 50px; height: 50px;
@@ -181,6 +189,10 @@
   display: flex;
   flex-direction: column;
   gap: 14px;
+  animation: af-fade-up 0.35s ease 0.08s both;
+}
+.card:nth-child(2) {
+  animation-delay: 0.16s;
 }
 .card h3 {
   display: flex;
@@ -378,7 +390,7 @@
   gap: 20px;
   align-items: start;
   padding-top: 4px;
-  animation: fadeIn 0.2s ease;
+  animation: af-fade-in 0.22s ease both;
 }
 .fields {
   display: flex;
@@ -554,7 +566,7 @@
   display: flex;
   flex-direction: column;
   gap: 10px;
-  animation: fadeIn 0.2s ease;
+  animation: af-fade-in 0.22s ease both;
 }
 .cash-options {
   display: flex;
@@ -593,6 +605,7 @@
   padding: 18px;
   position: sticky;
   top: 76px;
+  animation: af-fade-up 0.35s ease 0.14s both;
 }
 .summary-head {
   display: flex;
@@ -716,14 +729,19 @@
   transform: translateY(-1px);
 }
 .btn-confirm:disabled {
-  opacity: 0.75;
+  opacity: 0.78;
+  cursor: not-allowed;
+}
+.btn-confirm.btn-busy {
+  background: var(--primary-hover);
   cursor: progress;
 }
 .spinner {
-  width: 16px; height: 16px;
+  width: 17px; height: 17px;
   border-radius: 50%;
-  border: 2px solid rgba(255, 255, 255, 0.35);
+  border: 2.5px solid rgba(255, 255, 255, 0.32);
   border-top-color: #fff;
+  flex-shrink: 0;
   animation: spin 0.7s linear infinite;
 }
 
@@ -746,24 +764,52 @@
   margin: 0 auto;
 }
 .success-icon {
-  width: 72px; height: 72px;
+  width: 76px; height: 76px;
   margin: 0 auto 16px;
   border-radius: 50%;
-  background: var(--primary);
-  color: #fff;
   display: flex; align-items: center; justify-content: center;
   box-shadow: 0 0 0 10px var(--primary-light);
-  animation: popIn 0.3s ease;
 }
-.success h2 {
-  font-size: 1.5rem;
+.success-svg {
+  width: 76px;
+  height: 76px;
+  display: block;
+}
+.success-circle-bg {
+  fill: var(--primary-light);
+  transform-origin: center;
+  animation: fillSuccess 0.35s ease 0.1s both;
+}
+.success-circle {
+  stroke: var(--primary);
+  stroke-width: 3.5;
+  stroke-linecap: round;
+  stroke-dasharray: 170;
+  stroke-dashoffset: 170;
+  transform: rotate(-90deg);
+  transform-origin: center;
+  animation: drawCircle 0.42s cubic-bezier(0.65, 0, 0.45, 1) both;
+}
+.success-check {
+  stroke: var(--primary);
+  stroke-width: 4.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 42;
+  stroke-dashoffset: 42;
+  animation: drawCheck 0.28s cubic-bezier(0.65, 0, 0.45, 1) 0.34s both;
+}
+.success-title {
+  font-size: 1.55rem;
   font-weight: 800;
   color: var(--primary);
+  animation: af-fade-up 0.38s ease 0.18s both;
 }
 .success-sub {
   margin-top: 6px;
   font-size: 0.9rem;
   color: var(--text-secondary);
+  animation: af-fade-up 0.38s ease 0.26s both;
 }
 
 .tracking {
@@ -772,6 +818,7 @@
   justify-content: space-between;
   margin: 22px 0 18px;
   position: relative;
+  animation: af-fade-up 0.38s ease 0.3s both;
 }
 .tracking::before {
   content: '';
@@ -811,6 +858,7 @@
   border: 1.5px dashed var(--border);
   border-radius: var(--radius-md);
   padding: 16px 18px;
+  animation: af-fade-up 0.38s ease 0.36s both;
 }
 .receipt-row {
   display: flex;
@@ -862,6 +910,7 @@
   display: flex;
   flex-direction: column;
   gap: 4px;
+  animation: af-fade-up 0.38s ease 0.42s both;
 }
 .btn-ghost {
   display: flex;
