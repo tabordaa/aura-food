@@ -4,11 +4,26 @@ import { productService } from '../../services/product.service';
 import { categoryLabel } from '../../utils/categories';
 import { formatPrice } from '../../utils/format';
 import AdminLayout from './AdminLayout';
+import AnimatedNumber from './AnimatedNumber';
 import ProductFormModal from './ProductFormModal';
+import TableSkeleton from './TableSkeleton';
 import styles from './Admin.module.css';
+
+// Id incremental para re-disparar la animación del toast (evita Date.now() durante el render)
+let toastSeq = 0;
+const nextToastId = () => ++toastSeq;
 
 // A partir de este número de unidades se avisa que hay que reponer
 const LOW_STOCK = 10;
+
+const PRODUCT_SKELETON_COLS = [
+  { width: 140, avatar: true, square: true },
+  { width: 92 },
+  { width: 78 },
+  { width: 80, pill: true },
+  { width: 82, pill: true },
+  { width: 136, pill: true },
+];
 
 const TABS = [
   { id: 'todos',     label: 'Todos' },
@@ -16,6 +31,42 @@ const TABS = [
   { id: 'bajo',      label: 'Stock bajo' },
   { id: 'inactivos', label: 'Inactivos' },
 ];
+
+function emptyProductsCopy({ online, hasProducts, tab, search }) {
+  if (!online && !hasProducts) {
+    return {
+      emoji: '📡',
+      title: 'Sin conexión con el servidor',
+      desc: 'Revisa que el backend esté corriendo en el puerto 8000 e intenta de nuevo.',
+    };
+  }
+  if (search) {
+    return {
+      emoji: '🔍',
+      title: 'No encontramos ese producto',
+      desc: `No hay resultados para "${search}". Prueba con otro nombre o categoría.`,
+    };
+  }
+  if (tab === 'bajo') {
+    return {
+      emoji: '🌿',
+      title: '¡Inventario bien abastecido!',
+      desc: 'No tienes productos con stock bajo en este momento.',
+    };
+  }
+  if (tab === 'inactivos') {
+    return {
+      emoji: '✨',
+      title: 'Todo tu catálogo está activo',
+      desc: 'No hay productos ocultos para tus clientes.',
+    };
+  }
+  return {
+    emoji: '🥑',
+    title: 'Aún no hay productos aquí',
+    desc: 'Agrega el primer producto para empezar a mostrar tu catálogo en Aura Food.',
+  };
+}
 
 function matchesTab(product, tab) {
   if (tab === 'activos') return product.is_active;
@@ -66,7 +117,7 @@ export default function AdminProducts() {
       : await productService.updateProduct(editing.id, payload);
     replaceProduct(saved);
     setEditing(null);
-    setToast({ type: 'success', text: isNew ? `"${saved.name}" agregado al catálogo` : `"${saved.name}" actualizado` });
+    setToast({ id: nextToastId(), type: 'success', text: isNew ? `"${saved.name}" agregado al catálogo` : `"${saved.name}" actualizado` });
   }
 
   async function setActive(product, active) {
@@ -80,11 +131,12 @@ export default function AdminProducts() {
         replaceProduct({ ...product, is_active: false });
       }
       setToast({
+        id: nextToastId(),
         type: active ? 'success' : 'warning',
         text: active ? `"${product.name}" vuelve al catálogo` : `"${product.name}" ya no se muestra en el catálogo`,
       });
     } catch (err) {
-      setToast({ type: 'error', text: err instanceof TypeError ? 'Sin conexión con el servidor. Intenta de nuevo.' : err.message });
+      setToast({ id: nextToastId(), type: 'error', text: err instanceof TypeError ? 'Sin conexión con el servidor. Intenta de nuevo.' : err.message });
     } finally {
       setBusyId(null);
     }
@@ -134,24 +186,24 @@ export default function AdminProducts() {
         <section className={styles.kpis}>
           <div className={styles.kpi}>
             <div className={styles['kpi-head']}><span>En el catálogo</span><i>🛒</i></div>
-            <p className={styles['kpi-value']}>{stats.active}<small> productos activos</small></p>
+            <p className={styles['kpi-value']}><AnimatedNumber value={stats.active} /><small> productos activos</small></p>
             <span className={styles['kpi-foot']}>{stats.inactive} desactivado{stats.inactive !== 1 ? 's' : ''}</span>
           </div>
           <div className={styles.kpi}>
             <div className={styles['kpi-head']}><span>Stock bajo</span><i>📉</i></div>
-            <p className={styles['kpi-value']}>{stats.low}<small> por reponer</small></p>
+            <p className={styles['kpi-value']}><AnimatedNumber value={stats.low} /><small> por reponer</small></p>
             {stats.low > 0
               ? <span className={[styles.chip, styles['chip-alert']].join(' ')}>● {LOW_STOCK} unidades o menos</span>
               : <span className={styles.chip}>Todo abastecido</span>}
           </div>
           <div className={styles.kpi}>
             <div className={styles['kpi-head']}><span>Agotados</span><i>🚫</i></div>
-            <p className={styles['kpi-value']}>{stats.out}<small> sin unidades</small></p>
+            <p className={styles['kpi-value']}><AnimatedNumber value={stats.out} /><small> sin unidades</small></p>
             <span className={styles['kpi-foot']}>Los clientes no pueden pedirlos</span>
           </div>
           <div className={styles.kpi}>
             <div className={styles['kpi-head']}><span>Valor del inventario</span><i>📦</i></div>
-            <p className={styles['kpi-value']}>{formatPrice(stats.inventoryValue)}</p>
+            <p className={styles['kpi-value']}><AnimatedNumber value={stats.inventoryValue} currency /></p>
             <span className={styles['kpi-foot']}>{stats.units} unidades en bodega</span>
           </div>
         </section>
@@ -188,21 +240,41 @@ export default function AdminProducts() {
                   <th className={styles['col-actions']}>Acciones</th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody
+                key={loading && products.length === 0 ? 'loading' : `${tab}-${term}`}
+                className={styles['tbody-fade']}
+                aria-busy={loading && products.length === 0}
+              >
                 {loading && products.length === 0 ? (
-                  <tr><td colSpan={6} className={styles.empty}>Cargando productos…</td></tr>
+                  <TableSkeleton columns={PRODUCT_SKELETON_COLS} rows={5} />
                 ) : visible.length === 0 ? (
-                  <tr>
-                    <td colSpan={6} className={styles.empty}>
-                      {!online && products.length === 0
-                        ? '📡 No pudimos conectar con el backend. Revisa que esté corriendo en el puerto 8000.'
-                        : 'No hay productos que coincidan.'}
-                    </td>
-                  </tr>
-                ) : visible.map(product => {
+                  (() => {
+                    const empty = emptyProductsCopy({ online, hasProducts: products.length > 0, tab, search: search.trim() });
+                    return (
+                      <tr>
+                        <td colSpan={6} className={styles.empty}>
+                          <div className={styles['empty-box']}>
+                            <span className={styles['empty-emoji']} aria-hidden="true">{empty.emoji}</span>
+                            <strong>{empty.title}</strong>
+                            <p>{empty.desc}</p>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })()
+                ) : visible.map((product, index) => {
                   const busy = busyId === product.id;
                   return (
-                    <tr key={product.id} className={[busy ? styles.busy : '', product.is_active ? '' : styles.inactive].join(' ')}>
+                    <tr
+                      key={product.id}
+                      style={{ animationDelay: `${Math.min(index, 10) * 35}ms` }}
+                      className={[
+                        styles['row-stagger'],
+                        styles['row-elevated'],
+                        busy ? styles.busy : '',
+                        product.is_active ? '' : styles.inactive,
+                      ].filter(Boolean).join(' ')}
+                    >
                       <td>
                         <div className={styles['product-cell']}>
                           <span className={styles['product-thumb']}>
@@ -260,7 +332,7 @@ export default function AdminProducts() {
       )}
 
       {toast && (
-        <div className={[styles.toast, styles[`toast-${toast.type}`]].join(' ')} role="status">
+        <div key={toast.id} className={[styles.toast, styles[`toast-${toast.type}`]].join(' ')} role="status">
           {toast.text}
         </div>
       )}

@@ -1,14 +1,30 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { IconCheck, IconMapPin } from '../../components/Icons';
 import AdminLayout from './AdminLayout';
+import AnimatedNumber from './AnimatedNumber';
+import Sparkline from './Sparkline';
+import TableSkeleton from './TableSkeleton';
 
 import { formatOrderId, formatPrice, initials, parseServerDate } from '../../utils/format';
 import { adminService } from '../../services/admin.service';
 import { orderService } from '../../services/order.service';
 import styles from './Admin.module.css';
 
+// Id incremental para re-disparar la animación del toast (evita Date.now() durante el render)
+let toastSeq = 0;
+const nextToastId = () => ++toastSeq;
+
 const REFRESH_MS = 15000;
 const PAGE_SIZE = 8;
+
+const ORDER_SKELETON_COLS = [
+  { width: 72, twoLines: true },
+  { width: 130, avatar: true },
+  { width: 150, twoLines: true },
+  { width: 74 },
+  { width: 102, pill: true },
+  { width: 140, pill: true },
+];
 
 // Cómo ve el administrador cada estado del backend
 const STATUS_META = {
@@ -51,6 +67,88 @@ function courierNote(order) {
   return order.status === 'preparado' ? 'Esperando domiciliario' : '—';
 }
 
+// Resume ventas válidas de los últimos 7 días a partir de los pedidos ya cargados
+function buildSevenDayRevenue(orders) {
+  if (!orders.length) return { values: [], hasData: false };
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const buckets = Array(7).fill(0);
+
+  for (const order of orders) {
+    if (order.status === 'rechazado' || order.status === 'cancelado' || !order.created_at) continue;
+    const created = parseServerDate(order.created_at);
+    if (Number.isNaN(created.getTime())) continue;
+
+    const day = new Date(created);
+    day.setHours(0, 0, 0, 0);
+    const diffDays = Math.round((today - day) / 86400000);
+    if (diffDays >= 0 && diffDays < 7) {
+      buckets[6 - diffDays] += Number(order.total_price) || 0;
+    }
+  }
+
+  return { values: buckets, hasData: buckets.some(v => v > 0) };
+}
+
+// Aviso sonoro corto y discreto con Web Audio API (solo si el usuario ya interactuó)
+function playOrderDing(live) {
+  try {
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    if (!AudioCtx) return;
+    if (!live.audioCtx) live.audioCtx = new AudioCtx();
+    const ctx = live.audioCtx;
+    if (ctx.state === 'suspended') ctx.resume();
+
+    const now = ctx.currentTime;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(880, now);
+    osc.frequency.exponentialRampToValueAtTime(1174.66, now + 0.09);
+
+    gain.gain.setValueAtTime(0.001, now);
+    gain.gain.linearRampToValueAtTime(0.06, now + 0.015);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.28);
+
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start(now);
+    osc.stop(now + 0.3);
+  } catch {
+    // Sin soporte de audio o bloqueado por políticas del navegador
+  }
+}
+
+function emptyOrdersCopy({ online, hasOrders, tab, search }) {
+  if (!online && !hasOrders) {
+    return {
+      emoji: '📡',
+      title: 'Sin conexión con el servidor',
+      desc: 'Revisa que el backend esté corriendo en el puerto 8000 e intenta actualizar.',
+    };
+  }
+  if (search) {
+    return {
+      emoji: '🔍',
+      title: 'No encontramos ese pedido',
+      desc: `Ningún pedido coincide con "${search}". Prueba con otro número, cliente o dirección.`,
+    };
+  }
+  if (tab === 'pendiente') {
+    return {
+      emoji: '🎉',
+      title: '¡Todo al día!',
+      desc: 'No hay pedidos pendientes por aceptar en este momento.',
+    };
+  }
+  return {
+    emoji: '🧾',
+    title: 'No hay pedidos en esta sección',
+    desc: 'Cuando cambien de estado aparecerán aquí automáticamente.',
+  };
+}
+
 export default function AdminDashboard() {
   const [orders, setOrders] = useState([]);
   const [stats, setStats] = useState(null);
@@ -64,10 +162,98 @@ export default function AdminDashboard() {
   const [confirmRejectId, setConfirmRejectId] = useState(null);
   const [rejectReason, setRejectReason] = useState('');
   const [toast, setToast] = useState(null);
+  const [highlightedIds, setHighlightedIds] = useState(() => new Set());
+  const [popAction, setPopAction] = useState(null);
+
+  // Estado mutable para notificaciones en vivo entre polls sin provocar renders extra
+  const liveRef = useRef({
+    seenIds: null,
+    unread: 0,
+    baseTitle: '',
+    interacted: false,
+    audioCtx: null,
+    timers: [],
+  });
+
+  // Guarda título inicial, detecta interacción para el ding y limpia alertas al recuperar foco
+  useEffect(() => {
+    const live = liveRef.current;
+    live.baseTitle = document.title || 'Aura Food';
+
+    const clearUnreadTitle = () => {
+      if (live.unread === 0) return;
+      live.unread = 0;
+      document.title = live.baseTitle;
+    };
+    const onVisibility = () => {
+      if (!document.hidden) clearUnreadTitle();
+    };
+    const onInteract = () => {
+      live.interacted = true;
+      clearUnreadTitle();
+    };
+
+    window.addEventListener('focus', clearUnreadTitle);
+    document.addEventListener('visibilitychange', onVisibility);
+    window.addEventListener('pointerdown', onInteract, { passive: true });
+    window.addEventListener('keydown', onInteract);
+
+    return () => {
+      window.removeEventListener('focus', clearUnreadTitle);
+      document.removeEventListener('visibilitychange', onVisibility);
+      window.removeEventListener('pointerdown', onInteract);
+      window.removeEventListener('keydown', onInteract);
+      live.timers.forEach(clearTimeout);
+      live.timers.length = 0;
+      document.title = live.baseTitle;
+      if (live.audioCtx) {
+        live.audioCtx.close().catch(() => {});
+        live.audioCtx = null;
+      }
+    };
+  }, []);
 
   // Los setState ocurren en los callbacks de la promesa (cuando llega la respuesta), no al llamar la función
   const loadOrders = useCallback(() => Promise.all([orderService.getOrders(), adminService.getStats()])
     .then(([list, summary]) => {
+      const live = liveRef.current;
+      if (live.seenIds === null) {
+        // Primera carga: solo registra los IDs existentes sin disparar alertas
+        live.seenIds = new Set(list.map(o => o.id));
+      } else {
+        const incoming = list.filter(o => !live.seenIds.has(o.id));
+        list.forEach(o => live.seenIds.add(o.id));
+
+        if (incoming.length > 0) {
+          const newest = incoming[0];
+          const extra = incoming.length > 1 ? ` (+${incoming.length - 1})` : '';
+          setToast({
+            id: nextToastId(),
+            type: 'success',
+            text: `🛒 Nuevo pedido ${formatOrderId(newest.id)} · ${formatPrice(newest.total_price)}${extra}`,
+          });
+
+          const newIds = incoming.map(o => o.id);
+          setHighlightedIds(prev => {
+            const next = new Set(prev);
+            newIds.forEach(id => next.add(id));
+            return next;
+          });
+          const clearTimer = setTimeout(() => {
+            setHighlightedIds(prev => {
+              const next = new Set(prev);
+              newIds.forEach(id => next.delete(id));
+              return next;
+            });
+          }, 2600);
+          live.timers.push(clearTimer);
+
+          live.unread += incoming.length;
+          document.title = `(${live.unread}) Nuevo pedido · Aura Food`;
+          if (live.interacted) playOrderDing(live);
+        }
+      }
+
       setOrders(list);
       setStats(summary);
       setOnline(true);
@@ -89,8 +275,15 @@ export default function AdminDashboard() {
     return () => clearTimeout(timer);
   }, [toast]);
 
+  const triggerPop = (id, action) => {
+    setPopAction({ id, action });
+    const timer = setTimeout(() => setPopAction(null), 320);
+    liveRef.current.timers.push(timer);
+  };
+
   async function changeStatus(order, status) {
     const rejecting = status === 'rechazado';
+    triggerPop(order.id, rejecting ? 'reject' : 'accept');
     setBusyId(order.id);
     try {
       const updated = rejecting
@@ -101,6 +294,7 @@ export default function AdminDashboard() {
       setConfirmRejectId(null);
       setRejectReason('');
       setToast({
+        id: nextToastId(),
         type: rejecting ? 'warning' : 'success',
         text: rejecting
           ? `Pedido ${formatOrderId(order.id)} rechazado: el cliente verá el motivo`
@@ -108,6 +302,7 @@ export default function AdminDashboard() {
       });
     } catch (err) {
       setToast({
+        id: nextToastId(),
         type: 'error',
         text: err instanceof TypeError ? 'Sin conexión con el servidor. Intenta de nuevo.' : err.message,
       });
@@ -116,7 +311,11 @@ export default function AdminDashboard() {
     }
   }
 
-  const openReject = (orderId) => { setConfirmRejectId(orderId); setRejectReason(''); };
+  const openReject = (orderId) => {
+    triggerPop(orderId, 'reject');
+    setConfirmRejectId(orderId);
+    setRejectReason('');
+  };
 
   const now = new Date();
   const counts = useMemo(() => {
@@ -124,6 +323,8 @@ export default function AdminDashboard() {
     for (const o of orders) c[o.status] = (c[o.status] || 0) + 1;
     return c;
   }, [orders]);
+
+  const sparkline = useMemo(() => buildSevenDayRevenue(orders), [orders]);
 
   // Los indicadores vienen del servidor (cubren todos los pedidos, no solo los cargados en la tabla)
   const byStatus = stats?.orders_by_status ?? counts;
@@ -174,24 +375,27 @@ export default function AdminDashboard() {
           <section className={styles.kpis}>
             <div className={styles.kpi}>
               <div className={styles['kpi-head']}><span>Pedidos nuevos</span><i>🔔</i></div>
-              <p className={styles['kpi-value']}>{byStatus.pendiente || 0}<small> por aceptar</small></p>
+              <p className={styles['kpi-value']}><AnimatedNumber value={byStatus.pendiente || 0} /><small> por aceptar</small></p>
               {byStatus.pendiente > 0
                 ? <span className={[styles.chip, styles['chip-alert']].join(' ')}>● Atención requerida</span>
                 : <span className={styles.chip}>Todo al día</span>}
             </div>
             <div className={styles.kpi}>
               <div className={styles['kpi-head']}><span>Ingresos de hoy</span><i>💵</i></div>
-              <p className={styles['kpi-value']}>{formatPrice(stats?.today_revenue ?? 0)}</p>
+              <div className={styles['kpi-value-row']}>
+                <p className={styles['kpi-value']}><AnimatedNumber value={stats?.today_revenue ?? 0} currency /></p>
+                {sparkline.hasData && <Sparkline values={sparkline.values} />}
+              </div>
               <span className={styles['kpi-foot']}>{todayCount} pedido{todayCount !== 1 ? 's' : ''} hoy · incluye domicilio</span>
             </div>
             <div className={styles.kpi}>
               <div className={styles['kpi-head']}><span>En curso</span><i>🛵</i></div>
-              <p className={styles['kpi-value']}>{inProgress}<small> en preparación o camino</small></p>
+              <p className={styles['kpi-value']}><AnimatedNumber value={inProgress} /><small> en preparación o camino</small></p>
               <span className={styles['kpi-foot']}>{byStatus.preparado || 0} preparando • {byStatus.asignado || 0} en camino</span>
             </div>
             <div className={styles.kpi}>
               <div className={styles['kpi-head']}><span>Completados</span><i>✅</i></div>
-              <p className={styles['kpi-value']}>{byStatus.entregado || 0}<small> de {totalOrders} totales</small></p>
+              <p className={styles['kpi-value']}><AnimatedNumber value={byStatus.entregado || 0} /><small> de {totalOrders} totales</small></p>
               <span className={styles['kpi-foot']}>
                 {totalOrders ? Math.round(((byStatus.entregado || 0) / totalOrders) * 100) : 0}% entregados
               </span>
@@ -230,24 +434,41 @@ export default function AdminDashboard() {
                     <th className={styles['col-actions']}>Acciones</th>
                   </tr>
                 </thead>
-                <tbody>
+                <tbody
+                  key={loading && orders.length === 0 ? 'loading' : `${tab}-${currentPage}-${term}`}
+                  className={styles['tbody-fade']}
+                  aria-busy={loading && orders.length === 0}
+                >
                   {loading && orders.length === 0 ? (
-                    <tr><td colSpan={6} className={styles.empty}>Cargando pedidos…</td></tr>
+                    <TableSkeleton columns={ORDER_SKELETON_COLS} rows={5} />
                   ) : pageOrders.length === 0 ? (
-                    <tr>
-                      <td colSpan={6} className={styles.empty}>
-                        {!online && orders.length === 0
-                          ? '📡 No pudimos conectar con el backend. Revisa que esté corriendo en el puerto 8000.'
-                          : tab === 'pendiente' && !term ? '🎉 No hay pedidos pendientes por ahora.' : 'No hay pedidos que coincidan.'}
-                      </td>
-                    </tr>
+                    (() => {
+                      const empty = emptyOrdersCopy({ online, hasOrders: orders.length > 0, tab, search: search.trim() });
+                      return (
+                        <tr>
+                          <td colSpan={6} className={styles.empty}>
+                            <div className={styles['empty-box']}>
+                              <span className={styles['empty-emoji']} aria-hidden="true">{empty.emoji}</span>
+                              <strong>{empty.title}</strong>
+                              <p>{empty.desc}</p>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })()
                   ) : pageOrders.map(order => {
                     const meta = STATUS_META[order.status] ?? { label: order.status, tone: 'progress' };
                     const created = parseServerDate(order.created_at);
                     const { names, units } = describeItems(order.items);
                     const busy = busyId === order.id;
+                    const isNew = highlightedIds.has(order.id);
+                    const popAccept = popAction?.id === order.id && popAction.action === 'accept';
+                    const popReject = popAction?.id === order.id && popAction.action === 'reject';
                     return (
-                      <tr key={order.id} className={busy ? styles.busy : ''}>
+                      <tr
+                        key={order.id}
+                        className={[busy ? styles.busy : '', isNew ? styles['row-new'] : ''].filter(Boolean).join(' ')}
+                      >
                         <td>
                           <div className={styles['order-id']}>
                             <span className={[styles.dot, styles[`dot-${meta.tone}`]].join(' ')} />
@@ -297,17 +518,31 @@ export default function AdminDashboard() {
                                 disabled={busy}
                                 autoFocus
                               />
-                              <button type="submit" className={styles['btn-danger']} disabled={busy || rejectReason.trim().length < 3}>
+                              <button
+                                type="submit"
+                                className={[styles['btn-danger'], popReject ? styles['btn-pop'] : ''].filter(Boolean).join(' ')}
+                                disabled={busy || rejectReason.trim().length < 3}
+                              >
                                 {busy ? '…' : 'Rechazar'}
                               </button>
                               <button type="button" className={styles['btn-ghost']} onClick={() => setConfirmRejectId(null)} disabled={busy}>No</button>
                             </form>
                           ) : (
                             <div className={styles.actions}>
-                              <button type="button" className={styles['btn-accept']} onClick={() => changeStatus(order, 'preparado')} disabled={busy}>
+                              <button
+                                type="button"
+                                className={[styles['btn-accept'], popAccept ? styles['btn-pop'] : ''].filter(Boolean).join(' ')}
+                                onClick={() => changeStatus(order, 'preparado')}
+                                disabled={busy}
+                              >
                                 {busy ? '…' : <><IconCheck size={13} /> Aceptar</>}
                               </button>
-                              <button type="button" className={styles['btn-reject']} onClick={() => openReject(order.id)} disabled={busy}>
+                              <button
+                                type="button"
+                                className={[styles['btn-reject'], popReject ? styles['btn-pop'] : ''].filter(Boolean).join(' ')}
+                                onClick={() => openReject(order.id)}
+                                disabled={busy}
+                              >
                                 ✕ Rechazar
                               </button>
                             </div>
@@ -343,7 +578,7 @@ export default function AdminDashboard() {
         </div>
 
       {toast && (
-        <div className={[styles.toast, styles[`toast-${toast.type}`]].join(' ')} role="status">
+        <div key={toast.id} className={[styles.toast, styles[`toast-${toast.type}`]].join(' ')} role="status">
           {toast.text}
         </div>
       )}

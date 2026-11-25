@@ -19,16 +19,27 @@ export default function Navbar({ search, setSearch, cartCount, setCartOpen, navi
           value={search}
           onChange={e => setSearch(e.target.value)}
         />
+        {search && (
+          <button
+            type="button"
+            className={styles['search-clear-btn']}
+            onClick={() => setSearch('')}
+            aria-label="Limpiar búsqueda"
+          >
+            ✕
+          </button>
+        )}
       </div>
       <div className={styles['navbar-actions']}>
-        <button className={styles['orders-btn']} onClick={() => navigate('/pedidos')} aria-label="Mis pedidos">
+        <button type="button" className={styles['orders-btn']} onClick={() => navigate('/pedidos')} aria-label="Mis pedidos">
           <IconTruck size={17} /> <span>Mis pedidos</span>
         </button>
-        <button className={styles['cart-btn']} aria-label="Carrito" onClick={() => setCartOpen(true)}>
+        <button type="button" className={styles['cart-btn']} aria-label="Carrito" data-cart-target onClick={() => setCartOpen(true)}>
           <IconCart size={22} />
-          {cartCount > 0 && <span className={styles['cart-badge']}>{cartCount}</span>}
+          {/* key={cartCount} re-dispara la animación af-pop al cambiar el conteo */}
+          {cartCount > 0 && <span key={cartCount} className={styles['cart-badge']}>{cartCount}</span>}
         </button>
-        <button className={styles['user-btn']} onClick={() => navigate('/perfil')} title="Mi perfil">
+        <button type="button" className={styles['user-btn']} onClick={() => navigate('/perfil')} title="Mi perfil">
           <div className={styles['user-avatar']}>{initials(user?.name)}</div>
           <span className={styles['user-name']}>{user?.name || 'Invitado'}</span>
         </button>

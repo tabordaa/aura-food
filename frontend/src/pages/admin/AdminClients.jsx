@@ -3,13 +3,60 @@ import { IconMapPin } from '../../components/Icons';
 import { adminService } from '../../services/admin.service';
 import { formatPrice, initials, parseServerDate } from '../../utils/format';
 import AdminLayout from './AdminLayout';
+import AnimatedNumber from './AnimatedNumber';
+import TableSkeleton from './TableSkeleton';
 import styles from './Admin.module.css';
+
+const CLIENT_SKELETON_COLS = [
+  { width: 135, avatar: true },
+  { width: 120, twoLines: true },
+  { width: 84, pill: true },
+  { width: 86 },
+  { width: 92 },
+  { width: 92 },
+];
 
 const TABS = [
   { id: 'todos',    label: 'Todos' },
   { id: 'con',      label: 'Con pedidos' },
   { id: 'sin',      label: 'Sin pedidos' },
 ];
+
+function emptyClientsCopy({ online, hasClients, tab, search }) {
+  if (!online && !hasClients) {
+    return {
+      emoji: '📡',
+      title: 'Sin conexión con el servidor',
+      desc: 'Revisa que el backend esté corriendo en el puerto 8000 e intenta actualizar.',
+    };
+  }
+  if (search) {
+    return {
+      emoji: '🔍',
+      title: 'No encontramos ese cliente',
+      desc: `Ningún cliente coincide con "${search}". Prueba con otro nombre, correo o teléfono.`,
+    };
+  }
+  if (tab === 'con') {
+    return {
+      emoji: '🛍️',
+      title: 'Todavía no hay clientes con pedidos',
+      desc: 'Apenas entren las primeras compras podrás ver su historial aquí.',
+    };
+  }
+  if (tab === 'sin') {
+    return {
+      emoji: '🎉',
+      title: '¡Todos tus clientes ya compraron!',
+      desc: 'Cada persona registrada ha realizado al menos un pedido.',
+    };
+  }
+  return {
+    emoji: '👋',
+    title: 'Aún no hay clientes registrados',
+    desc: 'Cuando las personas creen su cuenta en Aura Food aparecerán en esta lista.',
+  };
+}
 
 function matchesTab(client, tab) {
   if (tab === 'con') return client.orders_count > 0;
@@ -80,17 +127,17 @@ export default function AdminClients() {
         <section className={styles.kpis}>
           <div className={styles.kpi}>
             <div className={styles['kpi-head']}><span>Clientes registrados</span><i>👥</i></div>
-            <p className={styles['kpi-value']}>{stats.total}<small> en total</small></p>
+            <p className={styles['kpi-value']}><AnimatedNumber value={stats.total} /><small> en total</small></p>
             <span className={styles['kpi-foot']}>{stats.buyers} ya hicieron al menos un pedido</span>
           </div>
           <div className={styles.kpi}>
             <div className={styles['kpi-head']}><span>Pedidos realizados</span><i>🧾</i></div>
-            <p className={styles['kpi-value']}>{stats.orders}<small> pedidos</small></p>
+            <p className={styles['kpi-value']}><AnimatedNumber value={stats.orders} /><small> pedidos</small></p>
             <span className={styles['kpi-foot']}>Incluye rechazados y cancelados</span>
           </div>
           <div className={styles.kpi}>
             <div className={styles['kpi-head']}><span>Gasto promedio</span><i>💵</i></div>
-            <p className={styles['kpi-value']}>{formatPrice(stats.average)}</p>
+            <p className={styles['kpi-value']}><AnimatedNumber value={stats.average} currency /></p>
             <span className={styles['kpi-foot']}>Por cliente con pedidos</span>
           </div>
           <div className={styles.kpi}>
@@ -132,19 +179,34 @@ export default function AdminClients() {
                   <th>Cliente desde</th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody
+                key={loading && clients.length === 0 ? 'loading' : `${tab}-${term}`}
+                className={styles['tbody-fade']}
+                aria-busy={loading && clients.length === 0}
+              >
                 {loading && clients.length === 0 ? (
-                  <tr><td colSpan={6} className={styles.empty}>Cargando clientes…</td></tr>
+                  <TableSkeleton columns={CLIENT_SKELETON_COLS} rows={5} />
                 ) : visible.length === 0 ? (
-                  <tr>
-                    <td colSpan={6} className={styles.empty}>
-                      {!online && clients.length === 0
-                        ? '📡 No pudimos conectar con el backend. Revisa que esté corriendo en el puerto 8000.'
-                        : 'No hay clientes que coincidan.'}
-                    </td>
-                  </tr>
-                ) : visible.map(c => (
-                  <tr key={c.id}>
+                  (() => {
+                    const empty = emptyClientsCopy({ online, hasClients: clients.length > 0, tab, search: search.trim() });
+                    return (
+                      <tr>
+                        <td colSpan={6} className={styles.empty}>
+                          <div className={styles['empty-box']}>
+                            <span className={styles['empty-emoji']} aria-hidden="true">{empty.emoji}</span>
+                            <strong>{empty.title}</strong>
+                            <p>{empty.desc}</p>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })()
+                ) : visible.map((c, index) => (
+                  <tr
+                    key={c.id}
+                    style={{ animationDelay: `${Math.min(index, 10) * 35}ms` }}
+                    className={[styles['row-stagger'], styles['row-elevated']].join(' ')}
+                  >
                     <td>
                       <div className={styles.client}>
                         <span className={styles['client-avatar']}>{initials(c.name)}</span>

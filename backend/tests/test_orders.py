@@ -97,12 +97,12 @@ def test_public_config_exposes_delivery_values(client, monkeypatch):
 
 
 def test_create_order_saves_delivery_location(client, customer_headers, products):
-    payload = {**_order_payload(products), "delivery_lat": 4.669712, "delivery_lng": -74.053021}
+    payload = {**_order_payload(products), "delivery_lat": 6.256480, "delivery_lng": -75.612870}
 
     body = client.post("/api/orders", json=payload, headers=customer_headers).json()
 
-    assert body["delivery_lat"] == pytest.approx(4.669712)
-    assert body["delivery_lng"] == pytest.approx(-74.053021)
+    assert body["delivery_lat"] == pytest.approx(6.256480)
+    assert body["delivery_lng"] == pytest.approx(-75.612870)
 
 
 def test_create_order_without_location_is_allowed(client, customer_headers, products):
