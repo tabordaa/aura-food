@@ -34,6 +34,7 @@ export default function AdminLayout({ active, pendingCount = 0, search, onSearch
               key={item.id}
               type="button"
               className={[styles['nav-item'], item.id === active ? styles.active : ''].join(' ')}
+              aria-current={item.id === active ? 'page' : undefined}
               disabled={!item.path}
               title={!item.path ? 'Próximamente' : undefined}
               onClick={() => item.path && navigate(item.path)}
