@@ -3,7 +3,7 @@ import styles from '../pages/auth/Auth.module.css';
 // Cuentas de demostración: solo se muestran las que tengan contraseña configurada en el .env del frontend.
 // Pensado para presentaciones; en producción se dejan vacías y el panel no aparece.
 const ACCOUNTS = [
-  { key: 'cliente', label: 'Cliente', email: 'test@aurafood.com', password: import.meta.env.VITE_DEMO_CUSTOMER_PASSWORD },
+  { key: 'cliente', label: 'Cliente', email: 'client@aurafood.com', password: import.meta.env.VITE_DEMO_CUSTOMER_PASSWORD },
   { key: 'admin', label: 'Admin', email: 'admin@aurafood.com', password: import.meta.env.VITE_DEMO_ADMIN_PASSWORD },
   { key: 'domiciliario', label: 'Domiciliario', email: 'domicilio@aurafood.com', password: import.meta.env.VITE_DEMO_COURIER_PASSWORD },
 ].filter(account => account.password);
