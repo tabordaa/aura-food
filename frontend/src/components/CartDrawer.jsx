@@ -22,6 +22,15 @@ function CartDrawerContent({
   const timersRef = useRef(new Map());
   const animatedTotal = useCountUp(cartTotal, 420);
 
+  // Bloquea el scroll del fondo mientras el carrito está abierto y restaura el valor previo al cerrar/desmontar
+  useEffect(() => {
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = prevOverflow;
+    };
+  }, []);
+
   // Limpia temporizadores pendientes si el drawer se cierra a mitad de una eliminación
   useEffect(() => {
     const timers = timersRef.current;

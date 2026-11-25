@@ -86,8 +86,8 @@ input {
 @keyframes af-shimmer   { from { background-position: -400px 0; } to { background-position: 400px 0; } }
 @keyframes af-float     { 0%, 100% { transform: translateY(0) rotate(0deg); } 50% { transform: translateY(-18px) rotate(8deg); } }
 
-/* Transición al cambiar de ruta (ver PageTransition en App.jsx) */
-.page-transition { animation: af-fade-up 0.35s ease both; }
+/* Transición al cambiar de ruta (ver PageTransition en App.jsx): solo opacidad para no crear containing block de elementos fixed */
+.page-transition { animation: af-fade-in 0.3s ease backwards; }
 
 /* Bloque de carga tipo skeleton: <div className="skeleton" style={{ height: 16 }} /> */
 .skeleton {
