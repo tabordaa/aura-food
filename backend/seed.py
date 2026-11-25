@@ -32,7 +32,8 @@ USERS = [
         "password_env": "SEED_COURIER_PASSWORD",
     },
     {
-        "email": "test@aurafood.com",
+        "email": "client@aurafood.com",
+        "legacy_emails": ("test@aurafood.com",),
         "name": "Cliente de Prueba",
         "role": models.RoleEnum.cliente,
         "address": "Av. Siempre Viva 123",
@@ -40,6 +41,9 @@ USERS = [
         "password_env": "SEED_CUSTOMER_PASSWORD",
     },
 ]
+
+# Campos de control del seed que no corresponden a columnas de models.User
+USER_META_FIELDS = ("password_env", "legacy_emails")
 
 PRODUCTS = [
     {"id": 1, "name": "Aguacate Hass Maduro", "price": 4500, "old_price": None, "tag": "Fresco", "origin": "🌿 Cosecha Nacional", "unit": "x 500g", "category": "frutas", "stock": 50, "image_url": "https://images.unsplash.com/photo-1669143017427-26801de9bcc6?q=80&w=1114&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"},
@@ -61,6 +65,19 @@ def seed_users(db: Session) -> None:
         password = os.getenv(data["password_env"])
         user = db.query(models.User).filter(models.User.email == data["email"]).first()
 
+        # Migración idempotente: si solo existe un correo anterior, se renombra sin tocar id, contraseña ni pedidos
+        if not user and data.get("legacy_emails"):
+            legacy_user = (
+                db.query(models.User)
+                .filter(models.User.email.in_(data["legacy_emails"]))
+                .first()
+            )
+            if legacy_user:
+                old_email = legacy_user.email
+                legacy_user.email = data["email"]
+                user = legacy_user
+                print(f"Usuario renombrado: {old_email} → {data['email']}")
+
         if user:
             # Nunca se sobrescribe una contraseña válida; solo se repara un hash corrupto
             if password and not utils.is_valid_hash(user.password_hash):
@@ -72,7 +89,7 @@ def seed_users(db: Session) -> None:
             print(f"Omitido {data['email']}: define {data['password_env']} para crearlo")
             continue
 
-        fields = {k: v for k, v in data.items() if k != "password_env"}
+        fields = {k: v for k, v in data.items() if k not in USER_META_FIELDS}
         db.add(models.User(**fields, password_hash=utils.hash_password(password)))
         print(f"Usuario creado: {data['email']} ({data['role'].value})")
 
