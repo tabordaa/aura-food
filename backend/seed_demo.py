@@ -57,13 +57,18 @@ BASE_PRODUCT_IMAGES = {
     "Tomate Chonto Seleccionado": "1582284540020-8acbe03f4924",
 }
 
+# Clientes alrededor de San Javier (comuna 13, Medellín), cerca de la tienda en Campo Alegre, La América.
+# "legacy_addresses" son direcciones de versiones anteriores del seed: si las encuentra, las migra a la actual.
 DEMO_CUSTOMERS = [
-    {"email": "ana.gomez@demo.aurafood.com", "name": "Ana Gómez", "address": "Calle 85 # 11-42, Apto 502, Bogotá",
-     "phone": "3104567890", "joined_days_ago": 45, "location": (4.668150, -74.051320)},
-    {"email": "carlos.rios@demo.aurafood.com", "name": "Carlos Ríos", "address": "Carrera 7 # 72-13, Bogotá",
-     "phone": "3157894561", "joined_days_ago": 30, "location": (4.656820, -74.056410)},
-    {"email": "valentina.mora@demo.aurafood.com", "name": "Valentina Mora", "address": "Avenida 19 # 104-37, Bogotá",
-     "phone": "3209876543", "joined_days_ago": 12, "location": (4.690806, -74.051540)},
+    {"email": "ana.gomez@demo.aurafood.com", "name": "Ana Gómez", "address": "Calle 44 # 99-30, Apto 502, San Javier, Medellín",
+     "phone": "3104567890", "joined_days_ago": 45, "location": (6.256480, -75.612870),
+     "legacy_addresses": ("Calle 85 # 11-42, Apto 502, Bogotá", "Calle 15 # 55-20, Apto 502, Santa Fe, Medellín")},
+    {"email": "carlos.rios@demo.aurafood.com", "name": "Carlos Ríos", "address": "Carrera 100 # 47-15, San Javier, Medellín",
+     "phone": "3157894561", "joined_days_ago": 30, "location": (6.259120, -75.615940),
+     "legacy_addresses": ("Carrera 7 # 72-13, Bogotá", "Carrera 53 # 12-15, Santa Fe, Medellín")},
+    {"email": "valentina.mora@demo.aurafood.com", "name": "Valentina Mora", "address": "Calle 40 # 102-20, San Javier, Medellín",
+     "phone": "3209876543", "joined_days_ago": 12, "location": (6.253310, -75.616720),
+     "legacy_addresses": ("Avenida 19 # 104-37, Bogotá", "Calle 18 # 51-44, Santa Fe, Medellín")},
 ]
 
 S = models.OrderStatus
@@ -130,6 +135,9 @@ def seed_customers(db: Session) -> list[models.User]:
             )
             db.add(user)
             print(f"Cliente demo creado: {data['email']}")
+        elif user.address in data["legacy_addresses"]:
+            user.address = data["address"]
+            print(f"Dirección de {data['email']} actualizada")
         customers.append(user)
     db.flush()
     return customers
@@ -141,13 +149,18 @@ def seed_orders(db: Session, customers: list[models.User], products: dict[str, m
     fee = settings.get_delivery_fee()
     now = models.utc_now()
     locations = {c["email"]: c["location"] for c in DEMO_CUSTOMERS}
+    legacy_addresses = {c["email"]: c["legacy_addresses"] for c in DEMO_CUSTOMERS}
     created = 0
     for customer in customers:
         lat, lng = locations[customer.email]
         existing = db.query(models.Order).filter(models.Order.user_id == customer.id).all()
         if existing:
             for order in existing:
-                if order.delivery_lat is None and order.delivery_address == customer.address:
+                # Pedidos creados con una dirección antigua del seed: se mueven a la dirección actual
+                if order.delivery_address in legacy_addresses[customer.email]:
+                    order.delivery_address = customer.address
+                    order.delivery_lat, order.delivery_lng = lat, lng
+                elif order.delivery_lat is None and order.delivery_address == customer.address:
                     order.delivery_lat, order.delivery_lng = lat, lng
             continue
         for status, hours_ago, items, payment, note in DEMO_ORDERS.get(customer.email, []):

@@ -20,9 +20,9 @@ def get_delivery_minutes() -> int:
 def get_store_location() -> dict:
     """Punto de recogida de la tienda que se muestra en los mapas (STORE_LAT, STORE_LNG, STORE_ADDRESS)."""
     return {
-        "lat": float(os.getenv("STORE_LAT", "4.6486")),
-        "lng": float(os.getenv("STORE_LNG", "-74.0628")),
-        "address": os.getenv("STORE_ADDRESS", "Calle 63 # 13-30, Bogotá"),
+        "lat": float(os.getenv("STORE_LAT", "6.2558")),
+        "lng": float(os.getenv("STORE_LNG", "-75.6047")),
+        "address": os.getenv("STORE_ADDRESS", "Calle 42C # 95-50, Campo Alegre, La América, Medellín"),
     }
 
 

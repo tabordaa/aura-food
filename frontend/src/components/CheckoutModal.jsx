@@ -58,8 +58,8 @@ export default function CheckoutModal({
   const [saveToProfile, setSaveToProfile] = useState(true);
   const [showMap, setShowMap] = useState(false);
   const [location, setLocation] = useState(null);
-  // El mapa arranca centrado en la tienda (o en Bogotá mientras llega la configuración)
-  const mapCenter = useStoreConfig()?.store ?? { lat: 4.6486, lng: -74.0628 };
+  // El mapa arranca centrado en la tienda (o en Medellín mientras llega la configuración)
+  const mapCenter = useStoreConfig()?.store ?? { lat: 6.2558, lng: -75.6047 };
   const [payment, setPayment] = useState('card');
   const [card, setCard] = useState(EMPTY_CARD);
   const [cashWith, setCashWith] = useState('exact');

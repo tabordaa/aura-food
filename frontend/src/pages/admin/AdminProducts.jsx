@@ -9,6 +9,10 @@ import ProductFormModal from './ProductFormModal';
 import TableSkeleton from './TableSkeleton';
 import styles from './Admin.module.css';
 
+// Id incremental para re-disparar la animación del toast (evita Date.now() durante el render)
+let toastSeq = 0;
+const nextToastId = () => ++toastSeq;
+
 // A partir de este número de unidades se avisa que hay que reponer
 const LOW_STOCK = 10;
 
@@ -113,7 +117,7 @@ export default function AdminProducts() {
       : await productService.updateProduct(editing.id, payload);
     replaceProduct(saved);
     setEditing(null);
-    setToast({ id: Date.now(), type: 'success', text: isNew ? `"${saved.name}" agregado al catálogo` : `"${saved.name}" actualizado` });
+    setToast({ id: nextToastId(), type: 'success', text: isNew ? `"${saved.name}" agregado al catálogo` : `"${saved.name}" actualizado` });
   }
 
   async function setActive(product, active) {
@@ -127,12 +131,12 @@ export default function AdminProducts() {
         replaceProduct({ ...product, is_active: false });
       }
       setToast({
-        id: Date.now(),
+        id: nextToastId(),
         type: active ? 'success' : 'warning',
         text: active ? `"${product.name}" vuelve al catálogo` : `"${product.name}" ya no se muestra en el catálogo`,
       });
     } catch (err) {
-      setToast({ id: Date.now(), type: 'error', text: err instanceof TypeError ? 'Sin conexión con el servidor. Intenta de nuevo.' : err.message });
+      setToast({ id: nextToastId(), type: 'error', text: err instanceof TypeError ? 'Sin conexión con el servidor. Intenta de nuevo.' : err.message });
     } finally {
       setBusyId(null);
     }

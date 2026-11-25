@@ -10,6 +10,10 @@ import { adminService } from '../../services/admin.service';
 import { orderService } from '../../services/order.service';
 import styles from './Admin.module.css';
 
+// Id incremental para re-disparar la animación del toast (evita Date.now() durante el render)
+let toastSeq = 0;
+const nextToastId = () => ++toastSeq;
+
 const REFRESH_MS = 15000;
 const PAGE_SIZE = 8;
 
@@ -224,7 +228,7 @@ export default function AdminDashboard() {
           const newest = incoming[0];
           const extra = incoming.length > 1 ? ` (+${incoming.length - 1})` : '';
           setToast({
-            id: Date.now(),
+            id: nextToastId(),
             type: 'success',
             text: `🛒 Nuevo pedido ${formatOrderId(newest.id)} · ${formatPrice(newest.total_price)}${extra}`,
           });
@@ -290,7 +294,7 @@ export default function AdminDashboard() {
       setConfirmRejectId(null);
       setRejectReason('');
       setToast({
-        id: Date.now(),
+        id: nextToastId(),
         type: rejecting ? 'warning' : 'success',
         text: rejecting
           ? `Pedido ${formatOrderId(order.id)} rechazado: el cliente verá el motivo`
@@ -298,7 +302,7 @@ export default function AdminDashboard() {
       });
     } catch (err) {
       setToast({
-        id: Date.now(),
+        id: nextToastId(),
         type: 'error',
         text: err instanceof TypeError ? 'Sin conexión con el servidor. Intenta de nuevo.' : err.message,
       });

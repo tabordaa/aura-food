@@ -11,7 +11,7 @@ import { prefersReducedMotion } from '../../utils/motion';
 import SlideToDeliver from './SlideToDeliver';
 import styles from './Delivery.module.css';
 
-const PICKUP_ADDRESS = import.meta.env.VITE_PICKUP_ADDRESS || 'Punto de recogida Aura Food';
+const PICKUP_ADDRESS = import.meta.env.VITE_PICKUP_ADDRESS || 'Calle 42C # 95-50, Campo Alegre, La América, Medellín';
 const REFRESH_MS = 20000;
 const EXIT_ANIMATION_MS = 340;
 const SKELETON_ITEMS = [0, 1];
